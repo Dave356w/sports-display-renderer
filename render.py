@@ -81,7 +81,7 @@ def main():
 
     pennant_x     = 50
     stat_y_offset = 85   # vertically centred with 170px pennant height
-    wl_x, gb_x   = 640, 760
+    wl_x, gb_x   = 710, 840
 
     for team in teams:
         pennant_path = PENNANTS / f"{team['code']}.png"
