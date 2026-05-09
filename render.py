@@ -83,9 +83,10 @@ def main():
 
     draw_date(img, draw)
 
-    pennant_x     = 50
-    stat_y_offset = 85   # vertically centred with 170px pennant height
-    wl_x, gb_x   = 755, 875
+    pennant_x     = 55
+    pennant_scale = 0.82                          # fits inside frame content area
+    stat_y_offset = 70                            # centre of scaled pennant height
+    wl_x, gb_x   = 730, 855
 
     for team in teams:
         pennant_path = PENNANTS / f"{team['code']}.png"
@@ -93,6 +94,9 @@ def main():
             raise FileNotFoundError(f"Missing pennant: {pennant_path}")
 
         pennant = Image.open(pennant_path).convert("RGBA")
+        pw = int(pennant.width  * pennant_scale)
+        ph = int(pennant.height * pennant_scale)
+        pennant = pennant.resize((pw, ph), Image.LANCZOS)
         img.alpha_composite(pennant, (pennant_x, team["y"]))
 
         y = team["y"] + stat_y_offset
