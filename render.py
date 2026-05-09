@@ -79,9 +79,9 @@ def main():
 
     draw_date(img, draw)
 
-    pennant_x     = 60
-    stat_y_offset = 62
-    wl_x, gb_x   = 730, 865
+    pennant_x     = 50
+    stat_y_offset = 85   # vertically centred with 170px pennant height
+    wl_x, gb_x   = 640, 760
 
     for team in teams:
         pennant_path = PENNANTS / f"{team['code']}.png"
