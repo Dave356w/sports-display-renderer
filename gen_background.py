@@ -35,8 +35,8 @@ draw.text((W // 2, 130), "NL WEST",   font=fnt(80), fill=NAVY, anchor="mm")
 draw.text((W // 2, 235), "STANDINGS", font=fnt(80), fill=NAVY, anchor="mm")
 
 # ── Column headers (date drawn dynamically at y≈310) ─────────────────────────
-draw.text((710, 350), "W-L", font=fnt(38), fill=NAVY, anchor="mm")
-draw.text((840, 350), "GB",  font=fnt(38), fill=NAVY, anchor="mm")
+draw.text((760, 350), "W-L", font=fnt(38), fill=NAVY, anchor="mm")
+draw.text((875, 350), "GB",  font=fnt(38), fill=NAVY, anchor="mm")
 
 # ── Divider below headers ────────────────────────────────────────────────────
 draw.line([(40, 365), (W - 40, 365)], fill=DIVIDER, width=2)
