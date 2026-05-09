@@ -17,11 +17,9 @@ RED       = (185, 28, 28)
 FONT_BOLD = "/usr/share/fonts/truetype/lato/Lato-Heavy.ttf"
 FALLBACK  = "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"
 
-# Coordinates of the baked-in date in the 960×1600 background image
-DATE_CENTER_Y = 324
-DATE_RECT     = [(100, 295), (860, 358)]   # covers text + red dashes
-DATE_DASH_L   = [(120, 322), (175, 327)]   # left red dash
-DATE_DASH_R   = [(785, 322), (840, 327)]   # right red dash
+DATE_CENTER_Y = 310
+DATE_DASH_L   = [(130, 308), (180, 313)]
+DATE_DASH_R   = [(780, 308), (830, 313)]
 
 
 def fetch_standings():
@@ -54,13 +52,8 @@ def fetch_standings():
 
 
 def draw_date(img, draw):
-    # Sample parchment colour from a clean area above the date
-    bg_color = img.getpixel((480, 240))[:3]
-    draw.rectangle(DATE_RECT, fill=bg_color)
-
     date_str = datetime.now().strftime("%B %-d, %Y").upper()
     draw.text((480, DATE_CENTER_Y), date_str, font=load_font(30), fill=NAVY, anchor="mm")
-
     draw.rectangle(DATE_DASH_L, fill=RED)
     draw.rectangle(DATE_DASH_R, fill=RED)
 
