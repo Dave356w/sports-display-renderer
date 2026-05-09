@@ -19,14 +19,19 @@ jobs:
         with:
           python-version: "3.11"
 
-      - run: pip install -r requirements.txt
+      - name: Install Lato font
+        run: sudo apt-get install -y fonts-lato
 
-      - run: python render.py
+      - name: Install Python dependencies
+        run: pip install -r requirements.txt
 
-      - name: Commit updated renders
+      - name: Render standings
+        run: python render.py
+
+      - name: Commit updated render
         run: |
           git config user.name "sports-display-render-bot"
           git config user.email "actions@github.com"
           git add public/*.png
-          git diff --cached --quiet || git commit -m "Update rendered display PNGs"
+          git diff --cached --quiet || git commit -m "Update standings $(date -u +%Y-%m-%d)"
           git push

@@ -1,56 +1,90 @@
 from pathlib import Path
+from datetime import datetime
+import requests
 from PIL import Image, ImageDraw, ImageFont
 
-ROOT = Path(__file__).resolve().parent
-ASSETS = ROOT / "assets"
+ROOT     = Path(__file__).resolve().parent
+ASSETS   = ROOT / "assets"
 PENNANTS = ASSETS / "pennants"
-OUT = ROOT / "public" / "mlb_nl_west.png"
+OUT      = ROOT / "public" / "mlb_nl_west.png"
 
-TEAMS = [
-    {"code": "LAD", "wl": "31-16", "gb": "—",   "y": 370},
-    {"code": "SD",  "wl": "28-19", "gb": "3.0", "y": 600},
-    {"code": "ARI", "wl": "24-23", "gb": "7.0", "y": 830},
-    {"code": "COL", "wl": "16-29", "gb": "14.0","y": 1060},
-    {"code": "SF",  "wl": "15-30", "gb": "15.0","y": 1290},
-]
+NL_WEST_ID = 203
+TEAM_CODES  = {119: "LAD", 135: "SD", 109: "ARI", 115: "COL", 137: "SF"}
+SLOT_Y      = [370, 600, 830, 1060, 1290]
 
-NAVY = (8, 42, 78)
+NAVY      = (8, 42, 78)
 FONT_BOLD = "/usr/share/fonts/truetype/lato/Lato-Heavy.ttf"
-FALLBACK = "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"
+FALLBACK  = "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"
+
+
+def fetch_standings():
+    season = datetime.now().year
+    url = (
+        "https://statsapi.mlb.com/api/v1/standings"
+        f"?leagueId=104&season={season}&standingsTypes=regularSeason"
+    )
+    resp = requests.get(url, timeout=15)
+    resp.raise_for_status()
+
+    for division in resp.json()["records"]:
+        if division["division"]["id"] != NL_WEST_ID:
+            continue
+        teams = []
+        for rank, record in enumerate(division["teamRecords"]):
+            code = TEAM_CODES.get(record["team"]["id"])
+            if not code:
+                continue
+            gb = record.get("gamesBack", "-")
+            teams.append({
+                "code": code,
+                "wl":   f"{record['wins']}-{record['losses']}",
+                "gb":   "—" if gb == "-" else gb,
+                "y":    SLOT_Y[rank],
+            })
+        return teams
+
+    raise ValueError("NL West division not found in API response")
+
 
 def load_font(size):
     path = FONT_BOLD if Path(FONT_BOLD).exists() else FALLBACK
     return ImageFont.truetype(path, size)
 
+
 def main():
+    teams = fetch_standings()
+    print(f"Fetched standings for {datetime.now().strftime('%Y-%m-%d')}:")
+    for t in teams:
+        print(f"  {t['code']:3s}  {t['wl']:6s}  GB: {t['gb']}")
+
     bg_path = ASSETS / "background.png"
     if not bg_path.exists():
         raise FileNotFoundError(f"Missing {bg_path}")
 
-    img = Image.open(bg_path).convert("RGBA")
+    img  = Image.open(bg_path).convert("RGBA")
     draw = ImageDraw.Draw(img)
-    record_font = load_font(48)
+    font = load_font(48)
 
-    pennant_x = 60
+    pennant_x     = 60
     stat_y_offset = 62
-    wl_x = 730
-    gb_x = 865
+    wl_x, gb_x   = 730, 865
 
-    for team in TEAMS:
+    for team in teams:
         pennant_path = PENNANTS / f"{team['code']}.png"
         if not pennant_path.exists():
-            raise FileNotFoundError(f"Missing {pennant_path}")
+            raise FileNotFoundError(f"Missing pennant: {pennant_path}")
 
         pennant = Image.open(pennant_path).convert("RGBA")
         img.alpha_composite(pennant, (pennant_x, team["y"]))
 
         y = team["y"] + stat_y_offset
-        draw.text((wl_x, y), team["wl"], font=record_font, fill=NAVY, anchor="mm")
-        draw.text((gb_x, y), team["gb"], font=record_font, fill=NAVY, anchor="mm")
+        draw.text((wl_x, y), team["wl"], font=font, fill=NAVY, anchor="mm")
+        draw.text((gb_x, y), team["gb"], font=font, fill=NAVY, anchor="mm")
 
     OUT.parent.mkdir(parents=True, exist_ok=True)
     img.convert("RGB").save(OUT, quality=95)
     print(f"Wrote {OUT}")
+
 
 if __name__ == "__main__":
     main()
