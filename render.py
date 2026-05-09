@@ -5,6 +5,16 @@ Composites the hand-curated parchment background (971x1619) with felt-style
 team pennants (2172x724 source, scaled to fit each row), overlays the current
 date between the title's red dashes, and writes W-L / GB stats into the
 standings columns.
+
+Display orientation
+-------------------
+The reTerminal e1002 is natively landscape, but the design is portrait. Setting
+ROTATE_FOR_PORTRAIT_MOUNT = True saves the PNG rotated 90° clockwise so that,
+when the device is physically mounted with its long edge vertical (cable on the
+right), the artwork reads upright.
+
+Flip the constant to False (or change the rotate() angle to +90) if you mount
+the device landscape, or with the cable on the left.
 """
 from pathlib import Path
 from datetime import datetime
@@ -18,6 +28,14 @@ OUT      = ROOT / "public" / "mlb_nl_west.png"
 
 NL_WEST_ID  = 203
 TEAM_CODES  = {119: "LAD", 135: "SD", 109: "ARI", 115: "COL", 137: "SF"}
+
+# -- Display orientation -----------------------------------------------------
+# True  -> rotate the final PNG 90° CW so a vertically-mounted landscape device
+#          (cable on the right) shows the design upright.
+# False -> save the design portrait (no rotation), e.g. for a portrait-native
+#          panel or a device with built-in rotation handling.
+ROTATE_FOR_PORTRAIT_MOUNT = True
+ROTATE_ANGLE              = -90    # use +90 if the cable/hinge ends up on the left instead
 
 # -- Layout constants (calibrated for the 971x1619 parchment background) -----
 # Row dividers in the background sit at y = 627, 795, 963, 1132 -- 168 px apart.
@@ -117,9 +135,13 @@ def main():
         draw.text((WL_X, team["center"]), team["wl"], font=stat_font, fill=NAVY, anchor="mm")
         draw.text((GB_X, team["center"]), team["gb"], font=stat_font, fill=NAVY, anchor="mm")
 
+    if ROTATE_FOR_PORTRAIT_MOUNT:
+        # NEAREST keeps pixels exact (no resampling) on the 90° transpose.
+        img = img.rotate(ROTATE_ANGLE, expand=True, resample=Image.NEAREST)
+
     OUT.parent.mkdir(parents=True, exist_ok=True)
     img.convert("RGB").save(OUT, quality=95)
-    print(f"Wrote {OUT}")
+    print(f"Wrote {OUT}  ({img.size[0]}x{img.size[1]})")
 
 
 if __name__ == "__main__":
