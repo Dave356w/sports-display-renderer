@@ -36,7 +36,7 @@ TEAM_CODES  = {119: "LAD", 135: "SD", 109: "ARI", 115: "COL", 137: "SF"}
 # 800x480 landscape for the device buffer. Set to None to skip downsampling.
 DEVICE_OUTPUT_SIZE = (480, 800)            # (width, height) PORTRAIT
 
-ROTATE_FOR_PORTRAIT_MOUNT = True
+ROTATE_FOR_PORTRAIT_MOUNT = False
 ROTATE_ANGLE              = -90            # use +90 if the cable ends up on the left
 
 # -- Layout constants (calibrated for the 971x1619 parchment background) -----
