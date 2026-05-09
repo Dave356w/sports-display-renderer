@@ -13,8 +13,15 @@ TEAM_CODES  = {119: "LAD", 135: "SD", 109: "ARI", 115: "COL", 137: "SF"}
 SLOT_Y      = [370, 600, 830, 1060, 1290]
 
 NAVY      = (8, 42, 78)
+RED       = (185, 28, 28)
 FONT_BOLD = "/usr/share/fonts/truetype/lato/Lato-Heavy.ttf"
 FALLBACK  = "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"
+
+# Coordinates of the baked-in date in the 960×1600 background image
+DATE_CENTER_Y = 290
+DATE_RECT     = [(140, 268), (820, 312)]   # covers text + red dashes
+DATE_DASH_L   = [(155, 287), (200, 291)]   # left red dash
+DATE_DASH_R   = [(760, 287), (805, 291)]   # right red dash
 
 
 def fetch_standings():
@@ -46,6 +53,18 @@ def fetch_standings():
     raise ValueError("NL West division not found in API response")
 
 
+def draw_date(img, draw):
+    # Sample parchment colour from a clean area above the date
+    bg_color = img.getpixel((480, 240))[:3]
+    draw.rectangle(DATE_RECT, fill=bg_color)
+
+    date_str = datetime.now().strftime("%B %-d, %Y").upper()
+    draw.text((480, DATE_CENTER_Y), date_str, font=load_font(30), fill=NAVY, anchor="mm")
+
+    draw.rectangle(DATE_DASH_L, fill=RED)
+    draw.rectangle(DATE_DASH_R, fill=RED)
+
+
 def load_font(size):
     path = FONT_BOLD if Path(FONT_BOLD).exists() else FALLBACK
     return ImageFont.truetype(path, size)
@@ -64,6 +83,8 @@ def main():
     img  = Image.open(bg_path).convert("RGBA")
     draw = ImageDraw.Draw(img)
     font = load_font(48)
+
+    draw_date(img, draw)
 
     pennant_x     = 60
     stat_y_offset = 62
