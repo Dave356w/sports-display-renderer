@@ -17,9 +17,11 @@ RED       = (185, 28, 28)
 FONT_BOLD = "/usr/share/fonts/truetype/lato/Lato-Heavy.ttf"
 FALLBACK  = "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"
 
-DATE_CENTER_Y = 310
-DATE_DASH_L   = [(130, 308), (180, 313)]
-DATE_DASH_R   = [(780, 308), (830, 313)]
+# Date overlay — covers baked-in date in original background.png
+DATE_CENTER_Y = 324
+DATE_RECT     = [(160, 300), (800, 348)]
+DATE_DASH_L   = [(163, 322), (205, 327)]
+DATE_DASH_R   = [(755, 322), (797, 327)]
 
 
 def fetch_standings():
@@ -52,6 +54,8 @@ def fetch_standings():
 
 
 def draw_date(img, draw):
+    bg_color = img.getpixel((480, 260))[:3]   # sample parchment colour
+    draw.rectangle(DATE_RECT, fill=bg_color)
     date_str = datetime.now().strftime("%B %-d, %Y").upper()
     draw.text((480, DATE_CENTER_Y), date_str, font=load_font(30), fill=NAVY, anchor="mm")
     draw.rectangle(DATE_DASH_L, fill=RED)
@@ -81,7 +85,7 @@ def main():
 
     pennant_x     = 50
     stat_y_offset = 85   # vertically centred with 170px pennant height
-    wl_x, gb_x   = 760, 875
+    wl_x, gb_x   = 755, 875
 
     for team in teams:
         pennant_path = PENNANTS / f"{team['code']}.png"
