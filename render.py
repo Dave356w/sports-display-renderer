@@ -18,10 +18,10 @@ FONT_BOLD = "/usr/share/fonts/truetype/lato/Lato-Heavy.ttf"
 FALLBACK  = "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"
 
 # Coordinates of the baked-in date in the 960×1600 background image
-DATE_CENTER_Y = 290
-DATE_RECT     = [(140, 268), (820, 312)]   # covers text + red dashes
-DATE_DASH_L   = [(155, 287), (200, 291)]   # left red dash
-DATE_DASH_R   = [(760, 287), (805, 291)]   # right red dash
+DATE_CENTER_Y = 324
+DATE_RECT     = [(100, 295), (860, 358)]   # covers text + red dashes
+DATE_DASH_L   = [(120, 322), (175, 327)]   # left red dash
+DATE_DASH_R   = [(785, 322), (840, 327)]   # right red dash
 
 
 def fetch_standings():
