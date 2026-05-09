@@ -1,3 +1,11 @@
+"""
+Render the 7.3-inch e-paper NL West standings collectible.
+
+Composites the hand-curated parchment background (971x1619) with felt-style
+team pennants (2172x724 source, scaled to fit each row), overlays the current
+date between the title's red dashes, and writes W-L / GB stats into the
+standings columns.
+"""
 from pathlib import Path
 from datetime import datetime
 import requests
@@ -8,20 +16,27 @@ ASSETS   = ROOT / "assets"
 PENNANTS = ASSETS / "pennants"
 OUT      = ROOT / "public" / "mlb_nl_west.png"
 
-NL_WEST_ID = 203
+NL_WEST_ID  = 203
 TEAM_CODES  = {119: "LAD", 135: "SD", 109: "ARI", 115: "COL", 137: "SF"}
-SLOT_Y      = [370, 600, 830, 1060, 1290]
+
+# -- Layout constants (calibrated for the 971x1619 parchment background) -----
+# Row dividers in the background sit at y = 627, 795, 963, 1132 -- 168 px apart.
+# Five row slots run 459..627, 627..795, 795..963, 963..1131, 1131..1299.
+SLOT_CENTER_Y = [543, 711, 879, 1047, 1215]
+
+PENNANT_SCALE = 0.205                     # 2172x724 source -> ~445x148 (fits 168-px slot)
+PENNANT_X     = 38                        # left margin inside the parchment frame
+
+WL_X = 727                                # under the "W-L" header
+GB_X = 875                                # under the "GB" header
+
+# Date sits between the two red dashes baked into the background (y~340)
+DATE_CENTER_Y = 340
+DATE_CENTER_X = 487                       # midpoint of the gap between the dashes
 
 NAVY      = (8, 42, 78)
-RED       = (185, 28, 28)
 FONT_BOLD = "/usr/share/fonts/truetype/lato/Lato-Heavy.ttf"
 FALLBACK  = "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"
-
-# Date overlay — covers baked-in date in original background.png
-DATE_CENTER_Y = 324
-DATE_RECT     = [(160, 300), (800, 348)]
-DATE_DASH_L   = [(163, 322), (205, 327)]
-DATE_DASH_R   = [(755, 322), (797, 327)]
 
 
 def fetch_standings():
@@ -43,28 +58,31 @@ def fetch_standings():
                 continue
             gb = record.get("gamesBack", "-")
             teams.append({
-                "code": code,
-                "wl":   f"{record['wins']}-{record['losses']}",
-                "gb":   "—" if gb == "-" else gb,
-                "y":    SLOT_Y[rank],
+                "code":   code,
+                "wl":     f"{record['wins']}-{record['losses']}",
+                "gb":     "—" if gb == "-" else gb,
+                "center": SLOT_CENTER_Y[rank],
             })
         return teams
 
     raise ValueError("NL West division not found in API response")
 
 
-def draw_date(img, draw):
-    bg_color = img.getpixel((480, 260))[:3]   # sample parchment colour
-    draw.rectangle(DATE_RECT, fill=bg_color)
-    date_str = datetime.now().strftime("%B %-d, %Y").upper()
-    draw.text((480, DATE_CENTER_Y), date_str, font=load_font(30), fill=NAVY, anchor="mm")
-    draw.rectangle(DATE_DASH_L, fill=RED)
-    draw.rectangle(DATE_DASH_R, fill=RED)
-
-
 def load_font(size):
     path = FONT_BOLD if Path(FONT_BOLD).exists() else FALLBACK
     return ImageFont.truetype(path, size)
+
+
+def draw_date(draw):
+    """Stamp today's date in the gap between the title dashes."""
+    date_str = datetime.now().strftime("%B %-d, %Y").upper()
+    draw.text(
+        (DATE_CENTER_X, DATE_CENTER_Y),
+        date_str,
+        font=load_font(28),
+        fill=NAVY,
+        anchor="mm",
+    )
 
 
 def main():
@@ -79,14 +97,9 @@ def main():
 
     img  = Image.open(bg_path).convert("RGBA")
     draw = ImageDraw.Draw(img)
-    font = load_font(48)
+    stat_font = load_font(48)
 
-    draw_date(img, draw)
-
-    pennant_x     = 55
-    pennant_scale = 0.82                          # fits inside frame content area
-    stat_y_offset = 70                            # centre of scaled pennant height
-    wl_x, gb_x   = 730, 855
+    draw_date(draw)
 
     for team in teams:
         pennant_path = PENNANTS / f"{team['code']}.png"
@@ -94,14 +107,15 @@ def main():
             raise FileNotFoundError(f"Missing pennant: {pennant_path}")
 
         pennant = Image.open(pennant_path).convert("RGBA")
-        pw = int(pennant.width  * pennant_scale)
-        ph = int(pennant.height * pennant_scale)
+        pw = int(pennant.width  * PENNANT_SCALE)
+        ph = int(pennant.height * PENNANT_SCALE)
         pennant = pennant.resize((pw, ph), Image.LANCZOS)
-        img.alpha_composite(pennant, (pennant_x, team["y"]))
+        # vertically center the pennant on the row's centerline
+        py = team["center"] - ph // 2
+        img.alpha_composite(pennant, (PENNANT_X, py))
 
-        y = team["y"] + stat_y_offset
-        draw.text((wl_x, y), team["wl"], font=font, fill=NAVY, anchor="mm")
-        draw.text((gb_x, y), team["gb"], font=font, fill=NAVY, anchor="mm")
+        draw.text((WL_X, team["center"]), team["wl"], font=stat_font, fill=NAVY, anchor="mm")
+        draw.text((GB_X, team["center"]), team["gb"], font=stat_font, fill=NAVY, anchor="mm")
 
     OUT.parent.mkdir(parents=True, exist_ok=True)
     img.convert("RGB").save(OUT, quality=95)
