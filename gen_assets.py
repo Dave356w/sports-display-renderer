@@ -52,7 +52,14 @@ def make_pennant(team_id, info):
     for gy in [PH // 4, PH // 2, 3 * PH // 4]:
         draw.ellipse([(2, gy - 8), (18, gy + 8)], fill=SILVER, outline=(110, 110, 105), width=1)
 
-    # Team logo — left portion of pennant
+    # White circle backing so logo always contrasts against any pennant colour
+    CIRCLE_R = LOGO_SIZE // 2 + 6
+    cx = 22 + LOGO_SIZE // 2
+    cy = PH // 2
+    draw.ellipse([(cx - CIRCLE_R, cy - CIRCLE_R), (cx + CIRCLE_R, cy + CIRCLE_R)],
+                 fill=(255, 255, 255))
+
+    # Team logo — centred over the white circle
     logo    = fetch_logo(team_id)
     paste_y = (PH - LOGO_SIZE) // 2
     img.alpha_composite(logo, (22, paste_y))
