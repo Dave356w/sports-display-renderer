@@ -24,8 +24,8 @@ NL_WEST = {
     137: {"code": "SF",  "name": "GIANTS",            "primary": (39,  37,  31), "text": (253,  90,  30)},
 }
 
-PW, PH    = 650, 170   # must match render.py slot dimensions
-LOGO_SIZE = 130
+PW, PH    = 400, 170   # must match render.py slot dimensions
+LOGO_SIZE = 110
 SILVER    = (160, 160, 155)
 
 
@@ -52,29 +52,15 @@ def make_pennant(team_id, info):
     for gy in [PH // 4, PH // 2, 3 * PH // 4]:
         draw.ellipse([(2, gy - 8), (18, gy + 8)], fill=SILVER, outline=(110, 110, 105), width=1)
 
-    # White circle backing so logo always contrasts against any pennant colour
+    # White circle backing — logo centred at (75, 85)
     CIRCLE_R = LOGO_SIZE // 2 + 6
-    cx = 22 + LOGO_SIZE // 2
-    cy = PH // 2
+    cx, cy   = 75, PH // 2
     draw.ellipse([(cx - CIRCLE_R, cy - CIRCLE_R), (cx + CIRCLE_R, cy + CIRCLE_R)],
                  fill=(255, 255, 255))
 
-    # Team logo — centred over the white circle
-    logo    = fetch_logo(team_id)
-    paste_y = (PH - LOGO_SIZE) // 2
-    img.alpha_composite(logo, (22, paste_y))
-
-    # Team name — centred in right portion
-    text_cx = (22 + LOGO_SIZE + PW) // 2   # ≈ 383
-    name    = info["name"]
-    color   = info["text"]
-
-    if "\n" in name:
-        top, bot = name.split("\n")
-        draw.text((text_cx, PH // 2 - 20), top, font=fnt(30), fill=color, anchor="mm")
-        draw.text((text_cx, PH // 2 + 20), bot, font=fnt(30), fill=color, anchor="mm")
-    else:
-        draw.text((text_cx, PH // 2), name, font=fnt(36), fill=color, anchor="mm")
+    # Team logo
+    logo = fetch_logo(team_id)
+    img.alpha_composite(logo, (cx - LOGO_SIZE // 2, cy - LOGO_SIZE // 2))
 
     return img
 
