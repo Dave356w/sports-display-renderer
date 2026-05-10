@@ -117,7 +117,7 @@ def main():
     for t in teams:
         print(f"  {t['code']:3s}  {t['wl']:6s}  GB: {t['gb']}")
 
-    bg_path = ASSETS / "background.png"
+    bg_path = ASSETS / "background_.png"
     if not bg_path.exists():
         raise FileNotFoundError(f"Missing {bg_path}")
 
@@ -128,7 +128,7 @@ def main():
     draw_date(draw)
 
     for team in teams:
-        pennant_path = PENNANTS / f"{team['code']}.png"
+        pennant_path = ASSETS / f"{team['code']}_.png"
         if not pennant_path.exists():
             raise FileNotFoundError(f"Missing pennant: {pennant_path}")
 
