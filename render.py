@@ -19,6 +19,7 @@ ROTATE_FOR_PORTRAIT_MOUNT  rotate the saved PNG so a landscape-native panel
 """
 from pathlib import Path
 from datetime import datetime
+from zoneinfo import ZoneInfo
 import requests
 from PIL import Image, ImageDraw, ImageFont
 
@@ -29,6 +30,7 @@ OUT      = ROOT / "public" / "mlb_nl_west.png"
 
 NL_WEST_ID  = 203
 TEAM_CODES  = {119: "LAD", 135: "SD", 109: "ARI", 115: "COL", 137: "SF"}
+DISPLAY_TZ  = ZoneInfo("America/Los_Angeles")   # date shown on display
 
 # -- Device output -----------------------------------------------------------
 # reTerminal E1002 is 800x480 landscape native. We compose portrait at high
@@ -101,7 +103,7 @@ def load_font(size):
 
 def draw_date(draw):
     """Stamp today's date in the gap between the title dashes."""
-    date_str = datetime.now().strftime("%B %-d, %Y").upper()
+    date_str = datetime.now(DISPLAY_TZ).strftime("%B %-d, %Y").upper()
     draw.text(
         (DATE_CENTER_X, DATE_CENTER_Y),
         date_str,
@@ -113,7 +115,7 @@ def draw_date(draw):
 
 def main():
     teams = fetch_standings()
-    print(f"Fetched standings for {datetime.now().strftime('%Y-%m-%d')}:")
+    print(f"Fetched standings for {datetime.now(DISPLAY_TZ).strftime('%Y-%m-%d')}:")
     for t in teams:
         print(f"  {t['code']:3s}  {t['wl']:6s}  GB: {t['gb']}")
 
