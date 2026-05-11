@@ -2,7 +2,7 @@
 
 Renderer for the 7.3-inch e-paper sports collectible display.
 
-Composites hand-curated felt-pennant artwork (`assets/*_.png`,
+Composites pennant artwork (`assets/*_.png`,
 2172×724 source PNGs, white backgrounds flood-filled to alpha=0) onto a
 parchment NL West Standings background (`assets/background_.png`, 971×1619),
 then overlays the current date and live W-L / GB standings fetched from
