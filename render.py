@@ -1,7 +1,7 @@
 """
 Render the 7.3-inch e-paper NL West standings collectible.
 
-Composites the hand-curated parchment background (971x1619) with felt-style
+Composites background (971x1619)
 team pennants (2172x724 source, scaled to fit each row), overlays the current
 date between the title's red dashes, and writes W-L / GB stats into the
 standings columns. The composited canvas is then downsampled to the device's
