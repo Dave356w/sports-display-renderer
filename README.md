@@ -20,3 +20,11 @@ python render.py
 ```
 
 Output is written to `public/mlb_nl_west.png`.
+
+## License
+
+The code in this repository is released under the [MIT License](LICENSE).
+
+The team pennant artwork (`assets/*_.png`) is excluded from this license and is
+intended for personal, non-commercial use only. MLB team names and logos are
+trademarks of their respective clubs.
