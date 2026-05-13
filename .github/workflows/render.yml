@@ -33,7 +33,12 @@ jobs:
           git config user.name "sports-display-render-bot"
           git config user.email "actions@github.com"
           git add public/*.png
-          git diff --cached --quiet || git commit -m "Update standings $(date -u +%Y-%m-%d)"
-          git pull --rebase origin main
-          git push
+          if ! git diff --cached --quiet; then
+            git commit -m "Update standings $(date -u +%Y-%m-%d)"
+            git pull --rebase origin main
+            git push
+          else
+            echo "No changes to commit, skipping push."
+          fi
+
 
