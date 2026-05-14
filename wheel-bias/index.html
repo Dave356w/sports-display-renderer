@@ -1,0 +1,885 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Wheel Bias">
+<meta name="theme-color" content="#0a0a0a">
+<title>Wheel Bias</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Bebas+Neue&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #0a0a0a;
+  --surface: #111;
+  --surface2: #181818;
+  --surface3: #1e1e1e;
+  --border: rgba(255,255,255,0.08);
+  --border2: rgba(255,255,255,0.14);
+  --text: #f0f0f0;
+  --text2: #888;
+  --text3: #555;
+  --red: #d63031;
+  --red-dim: rgba(214,48,49,0.18);
+  --green: #00b894;
+  --green-dim: rgba(0,184,148,0.14);
+  --amber: #fdcb6e;
+  --amber-dim: rgba(253,203,110,0.14);
+  --purple: #a29bfe;
+  --hot: #ff7675;
+  --radius: 8px;
+  --radius-lg: 12px;
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-top: env(safe-area-inset-top, 0px);
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+html, body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'DM Sans', sans-serif;
+  font-size: 15px;
+  min-height: 100vh;
+  overscroll-behavior: none;
+}
+
+/* ── HEADER ── */
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: calc(var(--safe-top) + 14px) 20px 14px;
+  background: var(--bg);
+  border-bottom: 1px solid var(--border);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.app-title {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 28px;
+  letter-spacing: 0.04em;
+  color: var(--text);
+  line-height: 1;
+}
+
+.header-right { display: flex; align-items: center; gap: 10px; }
+
+.spin-badge {
+  font-family: 'DM Mono', monospace;
+  font-size: 12px;
+  color: var(--text3);
+  background: var(--surface2);
+  padding: 4px 10px;
+  border-radius: 20px;
+  border: 1px solid var(--border);
+}
+
+.btn-reset {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text3);
+  font-family: 'DM Mono', monospace;
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  padding: 6px 12px;
+  border-radius: 20px;
+  cursor: pointer;
+}
+.btn-reset:active { opacity: 0.6; }
+
+/* ── TABS ── */
+.tabs {
+  display: flex;
+  background: var(--bg);
+  border-bottom: 1px solid var(--border);
+  position: sticky;
+  top: calc(var(--safe-top) + 57px);
+  z-index: 99;
+}
+
+.tab {
+  flex: 1;
+  padding: 12px 4px;
+  font-size: 12px;
+  font-family: 'DM Mono', monospace;
+  color: var(--text3);
+  text-align: center;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  transition: color 0.15s, border-color 0.15s;
+  letter-spacing: 0.03em;
+}
+.tab.active {
+  color: var(--amber);
+  border-bottom-color: var(--amber);
+}
+
+/* ── PANELS ── */
+.panel { display: none; }
+.panel.active { display: block; }
+
+/* ── LOG PANEL ── */
+.log-panel { padding: 20px; }
+
+/* Big number input */
+.num-display {
+  background: var(--surface2);
+  border: 1px solid var(--border2);
+  border-radius: var(--radius-lg);
+  padding: 20px;
+  text-align: center;
+  margin-bottom: 16px;
+}
+
+.num-display-val {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 72px;
+  letter-spacing: 0.04em;
+  color: var(--text);
+  line-height: 1;
+  min-height: 72px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.num-display-val.empty { color: var(--text3); }
+.num-display-val.red-num { color: #ff9a9a; }
+.num-display-val.black-num { color: var(--text2); }
+.num-display-val.green-num { color: var(--green); }
+
+.num-display-label {
+  font-family: 'DM Mono', monospace;
+  font-size: 11px;
+  color: var(--text3);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin-top: 4px;
+}
+
+/* Keypad */
+.keypad {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.key {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text);
+  font-family: 'DM Mono', monospace;
+  font-size: 20px;
+  font-weight: 500;
+  padding: 0;
+  height: 58px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background 0.1s;
+  user-select: none;
+}
+.key:active { background: var(--surface3); transform: scale(0.95); }
+.key.key-00 { font-size: 16px; color: var(--green); border-color: rgba(0,184,148,0.2); background: rgba(0,184,148,0.06); }
+.key.key-del { font-size: 22px; color: var(--text2); }
+.key.key-log {
+  background: var(--amber);
+  border-color: var(--amber);
+  color: #0a0a0a;
+  font-size: 15px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  font-weight: 500;
+}
+.key.key-log:active { background: #e5b84f; transform: scale(0.95); }
+.key.key-log.disabled { opacity: 0.35; pointer-events: none; }
+
+/* Recent */
+.recent-section {
+  margin-bottom: 20px;
+}
+.section-label {
+  font-size: 10px;
+  font-family: 'DM Mono', monospace;
+  color: var(--text3);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  margin-bottom: 8px;
+}
+.hist-row {
+  display: flex;
+  gap: 5px;
+  flex-wrap: wrap;
+  min-height: 26px;
+}
+.hchip {
+  padding: 4px 9px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-family: 'DM Mono', monospace;
+  font-weight: 500;
+}
+.hchip.red { background: var(--red-dim); color: #ff9a9a; border: 1px solid rgba(214,48,49,0.25); }
+.hchip.black { background: #1a1a1a; color: #888; border: 1px solid #2a2a2a; }
+.hchip.green { background: var(--green-dim); color: var(--green); border: 1px solid rgba(0,184,148,0.2); }
+
+/* Stats */
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+}
+
+.stat-card {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 12px 14px;
+}
+.stat-label {
+  font-size: 10px;
+  font-family: 'DM Mono', monospace;
+  color: var(--text3);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin-bottom: 3px;
+}
+.stat-val {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 28px;
+  letter-spacing: 0.04em;
+  color: var(--text);
+  line-height: 1.1;
+}
+.stat-sub {
+  font-size: 11px;
+  color: var(--text3);
+  font-family: 'DM Mono', monospace;
+}
+
+/* ── WHEEL PANEL ── */
+.wheel-panel { padding: 16px; }
+
+.wheel-grid {
+  display: grid;
+  grid-template-columns: repeat(10, 1fr);
+  gap: 5px;
+  margin-bottom: 12px;
+}
+
+.nb {
+  aspect-ratio: 1;
+  border: none;
+  border-radius: 5px;
+  font-family: 'DM Mono', monospace;
+  font-size: 11px;
+  font-weight: 500;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  transition: transform 0.1s;
+  outline: none;
+  min-height: 44px;
+}
+.nb:active { transform: scale(0.9); }
+.nb.red { background: #8b1a1a; color: #ffaaaa; }
+.nb.black { background: #222; color: #aaa; border: 1px solid #333; }
+.nb.green { background: #0d4a3a; color: #4ecba0; }
+.nb.arc-hot { box-shadow: 0 0 0 2px var(--amber); }
+.nb .hd {
+  position: absolute;
+  top: 2px; right: 2px;
+  width: 5px; height: 5px;
+  border-radius: 50%;
+  background: var(--amber);
+  display: none;
+}
+.nb.hit .hd { display: block; }
+
+.wheel-legend {
+  display: flex;
+  gap: 14px;
+  flex-wrap: wrap;
+  font-size: 11px;
+  color: var(--text3);
+  font-family: 'DM Mono', monospace;
+  margin-bottom: 16px;
+}
+.wheel-legend span { display: flex; align-items: center; gap: 5px; }
+.leg-dot { width: 10px; height: 10px; border-radius: 3px; flex-shrink: 0; }
+.leg-ring { width: 10px; height: 10px; border-radius: 3px; border: 2px solid var(--amber); flex-shrink: 0; }
+
+.wheel-order-label {
+  font-size: 10px;
+  font-family: 'DM Mono', monospace;
+  color: var(--text3);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin-bottom: 8px;
+}
+.wheel-order {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+.wo-pill {
+  padding: 3px 8px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-family: 'DM Mono', monospace;
+  font-weight: 500;
+}
+.wo-pill.red { background: var(--red-dim); color: #ff9a9a; }
+.wo-pill.black { background: #1a1a1a; color: #888; border: 1px solid #2a2a2a; }
+.wo-pill.green { background: var(--green-dim); color: var(--green); }
+
+/* ── PLAYS PANEL ── */
+.plays-panel { padding: 20px; }
+
+.arc-summary {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-left: 2px solid var(--amber);
+  border-radius: var(--radius);
+  padding: 10px 12px;
+  font-size: 12px;
+  color: var(--text2);
+  font-family: 'DM Mono', monospace;
+  line-height: 1.6;
+  margin-bottom: 16px;
+}
+.arc-summary b { color: var(--amber); font-weight: 500; }
+
+.no-signal {
+  font-size: 13px;
+  color: var(--text3);
+  text-align: center;
+  padding: 48px 20px;
+  font-family: 'DM Mono', monospace;
+  line-height: 1.8;
+}
+
+.plays-list { display: flex; flex-direction: column; }
+
+.play-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--border);
+}
+.play-row:last-child { border-bottom: none; }
+
+.play-rank {
+  font-family: 'DM Mono', monospace;
+  font-size: 12px;
+  color: var(--text3);
+  width: 20px;
+  flex-shrink: 0;
+  text-align: right;
+}
+
+.play-body { flex: 1; min-width: 0; }
+
+.play-name {
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--text);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-bottom: 5px;
+}
+
+.best-badge {
+  font-family: 'DM Mono', monospace;
+  font-size: 9px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 2px 7px;
+  border-radius: 4px;
+  background: var(--red-dim);
+  color: var(--hot);
+  border: 1px solid rgba(255,118,117,0.2);
+}
+
+.play-meta {
+  font-size: 11px;
+  color: var(--text3);
+  font-family: 'DM Mono', monospace;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.cov-track {
+  display: inline-block;
+  width: 48px;
+  height: 3px;
+  background: rgba(255,255,255,0.08);
+  border-radius: 2px;
+  position: relative;
+  overflow: hidden;
+  vertical-align: middle;
+  flex-shrink: 0;
+}
+.cov-fill {
+  position: absolute;
+  left: 0; top: 0;
+  height: 100%;
+  border-radius: 2px;
+  background: var(--purple);
+}
+
+.play-right { text-align: right; flex-shrink: 0; }
+.play-score {
+  font-family: 'DM Mono', monospace;
+  font-size: 16px;
+  font-weight: 500;
+  color: var(--green);
+}
+.play-score-label {
+  font-size: 9px;
+  color: var(--text3);
+  font-family: 'DM Mono', monospace;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+/* Safe area padding at bottom */
+.bottom-safe { height: calc(var(--safe-bottom) + 12px); }
+
+/* Desktop upgrade */
+@media (min-width: 640px) {
+  .wheel-grid { grid-template-columns: repeat(13, 1fr); }
+  .keypad { max-width: 380px; margin-left: auto; margin-right: auto; }
+  .num-display { max-width: 380px; margin-left: auto; margin-right: auto; margin-bottom: 16px; }
+  .log-panel { max-width: 500px; margin: 0 auto; }
+  .plays-panel { max-width: 500px; margin: 0 auto; }
+}
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="header">
+  <div class="app-title">Wheel Bias</div>
+  <div class="header-right">
+    <div class="spin-badge" id="spinBadge">0 spins</div>
+    <button class="btn-reset" onclick="resetAll()">↺ Reset</button>
+  </div>
+</div>
+
+<!-- TABS -->
+<div class="tabs">
+  <button class="tab active" onclick="setTab('log')">Log</button>
+  <button class="tab" onclick="setTab('plays')">Plays</button>
+  <button class="tab" onclick="setTab('wheel')">Wheel</button>
+</div>
+
+<!-- LOG PANEL -->
+<div class="panel active" id="panel-log">
+  <div class="log-panel">
+
+    <div class="num-display">
+      <div class="num-display-val empty" id="numDisplay">—</div>
+      <div class="num-display-label" id="numDisplayLabel">enter number</div>
+    </div>
+
+    <div class="keypad">
+      <button class="key" onclick="keyPress('1')">1</button>
+      <button class="key" onclick="keyPress('2')">2</button>
+      <button class="key" onclick="keyPress('3')">3</button>
+      <button class="key key-del" onclick="keyDel()">⌫</button>
+
+      <button class="key" onclick="keyPress('4')">4</button>
+      <button class="key" onclick="keyPress('5')">5</button>
+      <button class="key" onclick="keyPress('6')">6</button>
+      <button class="key key-00" onclick="keyLog00()">00</button>
+
+      <button class="key" onclick="keyPress('7')">7</button>
+      <button class="key" onclick="keyPress('8')">8</button>
+      <button class="key" onclick="keyPress('9')">9</button>
+      <button class="key key-log disabled" id="keyLogBtn" onclick="keyLogCurrent()">LOG</button>
+
+      <button class="key" onclick="keyPress('0')" style="grid-column:span 2;">0</button>
+      <button class="key" onclick="keyPress('0')" style="display:none;"></button>
+      <button class="key" onclick="keyPress('0')" style="display:none;"></button>
+    </div>
+
+    <div class="recent-section">
+      <div class="section-label">Recent</div>
+      <div class="hist-row" id="histRow">
+        <span style="font-size:12px;color:var(--text3);font-family:'DM Mono',monospace;">—</span>
+      </div>
+    </div>
+
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-label">Total spins</div>
+        <div class="stat-val" id="totalSpins">0</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Unique pockets</div>
+        <div class="stat-val" id="uniqueNums">0</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Hottest</div>
+        <div class="stat-val" id="hotNum">—</div>
+        <div class="stat-sub" id="hotPct">—</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Coldest</div>
+        <div class="stat-val" id="coldNum">—</div>
+        <div class="stat-sub" id="coldPct">—</div>
+      </div>
+    </div>
+  </div>
+  <div class="bottom-safe"></div>
+</div>
+
+<!-- PLAYS PANEL -->
+<div class="panel" id="panel-plays">
+  <div class="plays-panel">
+    <div id="arcSummary"></div>
+    <div id="guidePanel">
+      <div class="no-signal">Log at least 10 spins<br>to detect arc bias.</div>
+    </div>
+  </div>
+  <div class="bottom-safe"></div>
+</div>
+
+<!-- WHEEL PANEL -->
+<div class="panel" id="panel-wheel">
+  <div class="wheel-panel">
+    <div class="section-label" style="margin-bottom:10px;">Tap pocket to log</div>
+    <div class="wheel-grid" id="wheelGrid"></div>
+    <div class="wheel-legend">
+      <span><span class="leg-dot" style="background:#8b1a1a;"></span>Red</span>
+      <span><span class="leg-dot" style="background:#222;border:1px solid #333;"></span>Black</span>
+      <span><span class="leg-dot" style="background:#0d4a3a;"></span>Green</span>
+      <span><span style="width:8px;height:8px;border-radius:50%;background:var(--amber);flex-shrink:0;"></span>Hit</span>
+      <span><span class="leg-ring"></span>Hot arc</span>
+    </div>
+    <div class="wheel-order-label">Physical wheel order</div>
+    <div class="wheel-order" id="wheelOrder"></div>
+  </div>
+  <div class="bottom-safe"></div>
+</div>
+
+<script>
+const RED=new Set([1,3,5,7,9,12,14,16,18,19,21,23,25,27,30,32,34,36]);
+const BLACK=new Set([2,4,6,8,10,11,13,15,17,20,22,24,26,28,29,31,33,35]);
+const ALL=['00',0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36];
+const WHEEL=[0,28,9,26,30,11,7,20,32,17,5,22,34,15,3,24,36,13,1,'00',27,10,25,29,12,8,19,31,18,6,21,33,16,4,23,35,14,2];
+const HALF1=WHEEL.slice(0,19);
+const HALF2=WHEEL.slice(19,38);
+
+const ZONES=[
+  {type:'Dozen', name:'1st dozen',range:'1–12',   nums:[1,2,3,4,5,6,7,8,9,10,11,12]},
+  {type:'Dozen', name:'2nd dozen',range:'13–24',  nums:[13,14,15,16,17,18,19,20,21,22,23,24]},
+  {type:'Dozen', name:'3rd dozen',range:'25–36',  nums:[25,26,27,28,29,30,31,32,33,34,35,36]},
+  {type:'Half',  name:'Low',      range:'1–18',   nums:[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18]},
+  {type:'Half',  name:'High',     range:'19–36',  nums:[19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36]},
+  {type:'Column',name:'1st col',  range:'1,4,7…', nums:[1,4,7,10,13,16,19,22,25,28,31,34]},
+  {type:'Column',name:'2nd col',  range:'2,5,8…', nums:[2,5,8,11,14,17,20,23,26,29,32,35]},
+  {type:'Column',name:'3rd col',  range:'3,6,9…', nums:[3,6,9,12,15,18,21,24,27,30,33,36]},
+];
+
+let counts={};
+let history=[];
+let totalSpins=0;
+let currentInput='';
+let activeTab='log';
+
+ALL.forEach(n=>counts[String(n)]=0);
+
+function numColor(n){
+  if(n==='00'||n===0)return'green';
+  if(RED.has(n))return'red';
+  return'black';
+}
+
+function numLabel(n){
+  if(n==='00'||n===0)return'Green — 0/00';
+  if(RED.has(n))return'Red';
+  return'Black';
+}
+
+// Keypad
+function keyPress(d){
+  if(currentInput.length>=2)return;
+  currentInput+=d;
+  updateDisplay();
+}
+
+function keyDel(){
+  currentInput=currentInput.slice(0,-1);
+  updateDisplay();
+}
+
+function keyLog00(){
+  logNum('00');
+  currentInput='';
+  updateDisplay();
+}
+
+function keyLogCurrent(){
+  if(!currentInput)return;
+  const n=parseInt(currentInput);
+  if(isNaN(n)||n<0||n>36){
+    currentInput='';
+    updateDisplay();
+    return;
+  }
+  logNum(n);
+  currentInput='';
+  updateDisplay();
+}
+
+function updateDisplay(){
+  const el=document.getElementById('numDisplay');
+  const lbl=document.getElementById('numDisplayLabel');
+  const logBtn=document.getElementById('keyLogBtn');
+  if(!currentInput){
+    el.textContent='—';
+    el.className='num-display-val empty';
+    lbl.textContent='enter number';
+    logBtn.classList.add('disabled');
+    return;
+  }
+  const n=parseInt(currentInput);
+  el.textContent=currentInput;
+  logBtn.classList.remove('disabled');
+  if(isNaN(n)||n<0||n>36){
+    el.className='num-display-val';
+    lbl.textContent='invalid';
+    logBtn.classList.add('disabled');
+  } else {
+    const c=numColor(n);
+    el.className='num-display-val '+c+'-num';
+    lbl.textContent=numLabel(n);
+  }
+}
+
+// Wheel grid
+function buildWheel(){
+  const g=document.getElementById('wheelGrid');
+  g.innerHTML='';
+  ALL.forEach(n=>{
+    const b=document.createElement('button');
+    b.className='nb '+numColor(n);
+    b.id='nb-'+String(n);
+    b.innerHTML=String(n)+'<div class="hd"></div>';
+    b.onclick=()=>{ logNum(n); setTab('log'); };
+    g.appendChild(b);
+  });
+  // Wheel order pills
+  const wo=document.getElementById('wheelOrder');
+  wo.innerHTML='';
+  WHEEL.forEach(n=>{
+    const cls=numColor(n);
+    const pill=document.createElement('span');
+    pill.className='wo-pill '+cls;
+    pill.textContent=String(n);
+    wo.appendChild(pill);
+  });
+}
+
+function hitCount(arr){return arr.reduce((s,n)=>s+(counts[String(n)]||0),0);}
+function pct(h,t){return t===0?0:(h/t)*100;}
+
+function densitySplit(half){
+  const total=hitCount(half);
+  if(total===0)return Math.floor(half.length/2);
+  let cum=0;
+  const target=total/2;
+  for(let i=0;i<half.length-1;i++){
+    cum+=counts[String(half[i])]||0;
+    if(cum>=target)return i+1;
+  }
+  return Math.floor(half.length/2);
+}
+
+function getArcs(){
+  const s1=densitySplit(HALF1);
+  const s2=densitySplit(HALF2);
+  return[
+    {name:'Arc 1',nums:HALF1.slice(0,s1)},
+    {name:'Arc 2',nums:HALF1.slice(s1)},
+    {name:'Arc 3',nums:HALF2.slice(0,s2)},
+    {name:'Arc 4',nums:HALF2.slice(s2)},
+  ];
+}
+
+function getHotArcs(arcs){
+  return arcs.filter(arc=>{
+    const hits=hitCount(arc.nums);
+    const actual=pct(hits,totalSpins);
+    const expected=arc.nums.length/38*100;
+    return(actual-expected)>=2;
+  }).map(arc=>{
+    const hits=hitCount(arc.nums);
+    const actual=pct(hits,totalSpins);
+    const expected=arc.nums.length/38*100;
+    return{...arc,actual,expected,bias:actual-expected};
+  });
+}
+
+function scoreZone(zone,hotArcs){
+  if(hotArcs.length===0)return null;
+  let bestScore=-Infinity,bestPrecision=0,bestArcName='',bestBias=0,bestOverlap=0;
+  hotArcs.forEach(arc=>{
+    const aSet=new Set(arc.nums.map(String));
+    const overlap=zone.nums.filter(n=>aSet.has(String(n))).length;
+    const precision=overlap/zone.nums.length;
+    const score=precision*arc.bias;
+    if(score>bestScore){
+      bestScore=score;bestPrecision=precision;
+      bestArcName=arc.name;bestBias=arc.bias;bestOverlap=overlap;
+    }
+  });
+  if(bestScore<=0||bestPrecision<0.15)return null;
+  return{score:bestScore,precision:bestPrecision,arcName:bestArcName,arcBias:bestBias,overlap:bestOverlap};
+}
+
+function highlightHotArc(hotArcs){
+  document.querySelectorAll('.nb').forEach(b=>b.classList.remove('arc-hot'));
+  hotArcs.forEach(arc=>arc.nums.forEach(n=>{
+    const b=document.getElementById('nb-'+String(n));
+    if(b)b.classList.add('arc-hot');
+  }));
+}
+
+function renderPlays(){
+  const arcSummaryEl=document.getElementById('arcSummary');
+  const el=document.getElementById('guidePanel');
+  if(totalSpins<10){
+    arcSummaryEl.innerHTML='';
+    el.innerHTML='<div class="no-signal">Log at least 10 spins<br>to detect arc bias.</div>';
+    return;
+  }
+  const arcs=getArcs();
+  const hotArcs=getHotArcs(arcs);
+  highlightHotArc(hotArcs);
+  if(hotArcs.length===0){
+    arcSummaryEl.innerHTML='';
+    el.innerHTML='<div class="no-signal">No hot arcs detected yet.<br>Keep logging spins.</div>';
+    return;
+  }
+  const arcDesc=hotArcs.map(a=>`<b>${a.name}</b> ${a.nums.length}p +${a.bias.toFixed(1)}%`).join(' · ');
+  arcSummaryEl.innerHTML=`<div class="arc-summary">${arcDesc}</div>`;
+  const plays=[];
+  ZONES.forEach(z=>{
+    const result=scoreZone(z,hotArcs);
+    if(result)plays.push({...z,...result});
+  });
+  plays.sort((a,b)=>b.score-a.score);
+  if(plays.length===0){
+    el.innerHTML='<div class="no-signal">Hot arc found but no outside<br>bet covers it well enough.</div>';
+    return;
+  }
+  const topScore=plays[0].score;
+  let html='<div class="plays-list">';
+  plays.forEach((p,i)=>{
+    const isBest=p.score>=topScore*0.85;
+    const label=`(${p.type.toLowerCase()}) ${p.name} ${p.range}`;
+    const covPct=Math.round(p.precision*100);
+    const covPx=Math.round(p.precision*48);
+    html+=`<div class="play-row">
+      <div class="play-rank">${i+1}</div>
+      <div class="play-body">
+        <div class="play-name">${label}${isBest?'<span class="best-badge">Best</span>':''}</div>
+        <div class="play-meta">
+          <span class="cov-track"><span class="cov-fill" style="width:${covPx}px;"></span></span>
+          ${covPct}% in ${p.arcName} · ${p.overlap}/${p.nums.length}
+        </div>
+      </div>
+      <div class="play-right">
+        <div class="play-score">${p.score.toFixed(2)}</div>
+        <div class="play-score-label">prec×bias</div>
+      </div>
+    </div>`;
+  });
+  html+='</div>';
+  el.innerHTML=html;
+}
+
+function logNum(n){
+  counts[String(n)]++;
+  totalSpins++;
+  history.unshift(n);
+  if(history.length>60)history.pop();
+  const b=document.getElementById('nb-'+String(n));
+  if(b)b.classList.add('hit');
+  updateAll();
+}
+
+function updateHistory(){
+  const el=document.getElementById('histRow');
+  if(history.length===0){
+    el.innerHTML='<span style="font-size:12px;color:var(--text3);font-family:\'DM Mono\',monospace;">—</span>';
+    return;
+  }
+  el.innerHTML=history.slice(0,20).map(n=>`<span class="hchip ${numColor(n)}">${n}</span>`).join('');
+}
+
+function updateStats(){
+  document.getElementById('totalSpins').textContent=totalSpins;
+  document.getElementById('uniqueNums').textContent=ALL.filter(n=>(counts[String(n)]||0)>0).length;
+  document.getElementById('spinBadge').textContent=totalSpins+' spin'+(totalSpins===1?'':'s');
+  if(totalSpins>0){
+    const sorted=ALL.map(n=>({n,h:counts[String(n)]||0})).sort((a,b)=>b.h-a.h);
+    const hot=sorted[0],cold=sorted[sorted.length-1];
+    document.getElementById('hotNum').textContent=String(hot.n);
+    document.getElementById('hotPct').textContent=pct(hot.h,totalSpins).toFixed(1)+'%';
+    document.getElementById('coldNum').textContent=String(cold.n);
+    document.getElementById('coldPct').textContent=pct(cold.h,totalSpins).toFixed(1)+'%';
+  } else {
+    ['hotNum','coldNum'].forEach(id=>document.getElementById(id).textContent='—');
+    ['hotPct','coldPct'].forEach(id=>document.getElementById(id).textContent='—');
+  }
+}
+
+function updateAll(){
+  updateStats();
+  updateHistory();
+  renderPlays();
+}
+
+function resetAll(){
+  ALL.forEach(n=>counts[String(n)]=0);
+  history=[];totalSpins=0;currentInput='';
+  document.querySelectorAll('.nb').forEach(b=>b.classList.remove('hit','arc-hot'));
+  updateDisplay();
+  updateAll();
+}
+
+function setTab(name){
+  activeTab=name;
+  document.querySelectorAll('.tab').forEach((t,i)=>{
+    const tabs=['log','plays','wheel'];
+    t.classList.toggle('active',tabs[i]===name);
+  });
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+  document.getElementById('panel-'+name).classList.add('active');
+  window.scrollTo(0,0);
+}
+
+buildWheel();
+updateAll();
+</script>
+</body>
+</html>
