@@ -683,7 +683,7 @@ function buildWheel(){
     b.className='nb '+numColor(n);
     b.id='nb-'+String(n);
     b.innerHTML=String(n)+'<div class="hd"></div>';
-    b.onclick=()=>{ logNum(n); setTab('log'); };
+    b.onclick=()=>{ logNum(n); };
     g.appendChild(b);
   });
   // Wheel order pills
