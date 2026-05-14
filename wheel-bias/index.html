@@ -72,7 +72,6 @@ html,body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-seri
 .stat-val{font-family:'Bebas Neue',sans-serif;font-size:28px;letter-spacing:.04em;color:var(--text);line-height:1.1;}
 .stat-sub{font-size:11px;color:var(--text3);font-family:'DM Mono',monospace;}
 
-
 .sim-card{background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-lg);padding:12px 14px;margin-bottom:18px;}
 .sim-title{font-size:10px;font-family:'DM Mono',monospace;color:var(--text3);letter-spacing:.1em;text-transform:uppercase;margin-bottom:6px;display:flex;justify-content:space-between;gap:8px;}
 .sim-desc{font-size:11px;color:var(--text3);font-family:'DM Mono',monospace;line-height:1.45;margin-bottom:10px;}
@@ -135,8 +134,6 @@ html,body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-seri
 .wo-pill.red{background:var(--red-dim);color:#ff9a9a;}
 .wo-pill.black{background:#1a1a1a;color:#888;border:1px solid #2a2a2a;}
 .wo-pill.green{background:var(--green-dim);color:var(--green);}
-
-
 
 /* TABLE */
 .table-panel{padding:16px;}
@@ -271,7 +268,6 @@ html,body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-seri
 <div class="bottom-safe"></div>
 </div>
 
-
 <!-- TABLE -->
 <div class="panel" id="panel-table">
 <div class="table-panel">
@@ -309,10 +305,11 @@ const WHEEL=[0,28,9,26,30,11,7,20,32,17,5,22,34,15,3,24,36,13,1,'00',27,10,25,29
 const HALF1=WHEEL.slice(0,19);
 const HALF2=WHEEL.slice(19,38);
 
-// Signal tuning
 const MIN_SPINS_FOR_PLAYS=20;
 const HALFLIFE=75;
-const MIN_ARC_DENSITY_INSIDE_PRIMARY=0.30;
+const MIN_ARC_DENSITY_STREET=0.22;
+const MIN_ARC_DENSITY_CORNER=0.22;
+const MIN_ARC_DENSITY_SIXLINE=0.30;
 const MIN_ARC_DENSITY_OUTSIDE=0.33;
 const MIN_PRECISION_STREET=0.50;
 const MIN_PRECISION_SIXLINE=0.34;
@@ -320,7 +317,6 @@ const MIN_PRECISION_CORNER=0.50;
 const MIN_PRECISION_SPLIT=0.90;
 const MIN_PRECISION_TOPLINE=0.40;
 const MIN_NEW_ARC_POCKETS=2;
-const MAX_PLAYS=4;
 const MAX_INSIDE_PRIMARY=2;
 const MAX_STRAIGHT_CHIPS=9;
 const MIN_STRAIGHT_CHIPS=1;
@@ -362,7 +358,6 @@ function buildInsideCatalog(){
 }
 const INSIDE_CATALOG=buildInsideCatalog();
 
-// State
 let spinLog=[];
 let totalSpins=0;
 let currentInput='';
@@ -391,7 +386,6 @@ function normalizeInputValue(){
   return n;
 }
 
-// ── STORAGE ──
 function saveState(){
   try{ localStorage.setItem(STORAGE_KEY,JSON.stringify(spinLog)); }catch(e){}
 }
@@ -416,9 +410,7 @@ function restoreHitMarkers(){
   });
 }
 
-// ── RECENCY WEIGHTING ──
-function spinWeight(age){ return Math.pow(2, -age/HALFLIFE); }
-
+function spinWeight(age){ return Math.pow(2,-age/HALFLIFE); }
 function weightedHits(nums){
   const numSet=new Set(nums.map(String));
   let w=0;
@@ -466,13 +458,11 @@ function minHalfHitRate(){
   if(totalSpins<75)return 0.52;
   return 0.51;
 }
-
 function minOutsideArcSliceHitRate(zone){
   if(zone.type==='Dozen'||zone.type==='Column')return minDozenColumnHitRate();
   if(zone.type==='Half')return minHalfHitRate();
   return minDozenColumnHitRate();
 }
-
 function minInsideHitRate(zone){
   const breakEven=breakEvenHitRate(zone);
   const multiplier=totalSpins<40?1.35:totalSpins<75?1.25:1.15;
@@ -489,7 +479,6 @@ function minZoneHitRate(zone){
   return minInsideHitRate(zone);
 }
 
-// ── ARC DETECTION ──
 function densitySplitWeighted(half){
   const halfTotal=weightedHits(half);
   if(halfTotal===0)return Math.floor(half.length/2);
@@ -497,13 +486,10 @@ function densitySplitWeighted(half){
   const target=halfTotal/2;
   for(let i=0;i<half.length;i++){
     cum+=weightedHits([half[i]]);
-    if(cum>=target){
-      return Math.min(Math.max(i+1,1),half.length-1);
-    }
+    if(cum>=target) return Math.min(Math.max(i+1,1),half.length-1);
   }
   return half.length-1;
 }
-
 function getArcs(){
   const s1=densitySplitWeighted(HALF1);
   const s2=densitySplitWeighted(HALF2);
@@ -514,7 +500,6 @@ function getArcs(){
     {name:'Arc 4',nums:HALF2.slice(s2)},
   ];
 }
-
 function arcStats(arc){
   const tw=totalWeight();
   const actualP=tw===0?0:weightedHits(arc.nums)/tw;
@@ -522,39 +507,33 @@ function arcStats(arc){
   const nEff=effectiveN();
   const se=nEff>0?Math.sqrt(expectedP*(1-expectedP)/nEff):0;
   const z=se>0?(actualP-expectedP)/se:0;
-  return{
-    ...arc,
-    actual:actualP*100,
-    expected:expectedP*100,
-    bias:(actualP-expectedP)*100,
-    z
-  };
+  return{...arc,actual:actualP*100,expected:expectedP*100,bias:(actualP-expectedP)*100,z};
 }
-
 function getHotArcs(arcs){
-  return arcs
-    .map(arcStats)
-    .filter(a=>a.bias>=minArcBiasPct()&&a.z>=minArcZ())
-    .sort((a,b)=>(b.z*b.bias)-(a.z*a.bias));
+  return arcs.map(arcStats).filter(a=>a.bias>=minArcBiasPct()&&a.z>=minArcZ()).sort((a,b)=>(b.z*b.bias)-(a.z*a.bias));
 }
 
-// ── BET CATALOG + EDGE ──
 function rangeLabel(nums){ return nums.map(String).join('/'); }
-function betPayoutUnits(bet){ return bet.payoutUnits ?? Number(String(bet.payout).split(':')[0]); }
-function betStakeUnits(bet){ return bet.stakeUnits || 1; }
+function betPayoutUnits(bet){ return bet.payoutUnits??Number(String(bet.payout).split(':')[0]); }
+function betStakeUnits(bet){ return bet.stakeUnits||1; }
 function breakEvenHitRate(bet){ return betStakeUnits(bet)/(betPayoutUnits(bet)+1); }
-
 function zoneWeightedProbability(zone){ return weightedPct(zone.nums)/100; }
 function zoneEdge(zone){
   const p=zoneWeightedProbability(zone);
   return ((betPayoutUnits(zone)+1)*p/betStakeUnits(zone))-1;
 }
-
-function arcSliceWeightedProbability(zone, arcPockets){
+function arcSliceWeightedProbability(zone,arcPockets){
   if(!arcPockets||arcPockets.length===0)return 0;
   return weightedPct(arcPockets)/100;
 }
-
+function minArcDensityForBet(zone){
+  if(zone.type==='Street')   return MIN_ARC_DENSITY_STREET;
+  if(zone.type==='Corner')   return MIN_ARC_DENSITY_CORNER;
+  if(zone.type==='Six Line') return MIN_ARC_DENSITY_SIXLINE;
+  if(zone.type==='Split')    return MIN_ARC_DENSITY_STREET;
+  if(zone.type==='Top Line') return MIN_ARC_DENSITY_STREET;
+  return MIN_ARC_DENSITY_SIXLINE;
+}
 function minPrecisionForBet(zone){
   if(zone.family==='Outside')return 0;
   if(zone.type==='Street')   return MIN_PRECISION_STREET;
@@ -567,10 +546,8 @@ function minPrecisionForBet(zone){
   return 0.30;
 }
 
-// ── PORTFOLIO BUILDER ──
 function buildPortfolio(hotArcs){
   if(hotArcs.length===0)return[];
-
   const arcPocketSet=new Set();
   hotArcs.forEach(arc=>arc.nums.forEach(n=>arcPocketSet.add(String(n))));
   const totalArcPockets=arcPocketSet.size;
@@ -579,7 +556,6 @@ function buildPortfolio(hotArcs){
     let bestScore=-Infinity,bestArcDensity=0,bestPrecision=0;
     let bestArcName='',bestBias=0,bestZ=0,bestOverlap=0,bestArcSize=1;
     let bestArcPockets=[];
-
     hotArcs.forEach(arc=>{
       const aSet=new Set(arc.nums.map(String));
       const overlap=zone.nums.filter(n=>aSet.has(String(n))).length;
@@ -594,47 +570,26 @@ function buildPortfolio(hotArcs){
         bestArcPockets=zone.nums.filter(n=>aSet.has(String(n)));
       }
     });
-
     const edge=zoneEdge(zone);
     const zoneP=zoneWeightedProbability(zone);
     const allArcPocketsInZone=zone.nums.filter(n=>arcPocketSet.has(String(n)));
     const arcSliceP=arcSliceWeightedProbability(zone,allArcPocketsInZone);
     const hitRateMin=minZoneHitRate(zone);
     const edgeAdjustedScore=bestScore*(1+Math.max(edge,0));
-
     return{
-      ...zone,
-      score:edgeAdjustedScore,
-      arcDensity:bestArcDensity,
-      precision:bestPrecision,
-      arcName:bestArcName,
-      arcBias:bestBias,
-      arcZ:bestZ,
-      overlap:bestOverlap,
-      arcSize:bestArcSize,
-      edge,
-      zoneP,
-      arcSliceP,
-      hitRateMin,
-      arcPockets:allArcPocketsInZone
+      ...zone,score:edgeAdjustedScore,arcDensity:bestArcDensity,precision:bestPrecision,
+      arcName:bestArcName,arcBias:bestBias,arcZ:bestZ,overlap:bestOverlap,arcSize:bestArcSize,
+      edge,zoneP,arcSliceP,hitRateMin,arcPockets:allArcPocketsInZone
     };
   }
 
   const portfolio=[];
   const covered=new Set();
-
   function pushPick(p){
     const newPockets=p.arcPockets.filter(n=>!covered.has(String(n)));
     newPockets.forEach(n=>covered.add(String(n)));
     const coveragePct=Math.round(covered.size/totalArcPockets*100);
-    portfolio.push({
-      ...p,
-      marginalNew:newPockets.length,
-      marginalPct:Math.round(newPockets.length/totalArcPockets*100),
-      newPocketNums:newPockets,
-      coverageAfter:coveragePct,
-      totalArcPockets,
-    });
+    portfolio.push({...p,marginalNew:newPockets.length,marginalPct:Math.round(newPockets.length/totalArcPockets*100),newPocketNums:newPockets,coverageAfter:coveragePct,totalArcPockets});
   }
 
   // Layer 1: Inside primaries
@@ -642,7 +597,7 @@ function buildPortfolio(hotArcs){
     .map(z=>zoneInfo(z))
     .filter(z=>{
       if(z.score<=0)return false;
-      if(z.arcDensity<MIN_ARC_DENSITY_INSIDE_PRIMARY)return false;
+      if(z.arcDensity<minArcDensityForBet(z))return false;
       if(z.precision<minPrecisionForBet(z))return false;
       if(z.overlap<2)return false;
       if(z.zoneP<z.hitRateMin)return false;
@@ -656,7 +611,8 @@ function buildPortfolio(hotArcs){
     if(insidePrimaries.length===0){
       insidePrimaries.push(cand);
     } else {
-      const newPockets=cand.arcPockets.filter(n=>!insidePrimaries[0].arcPockets.map(String).includes(String(n)));
+      const alreadyCovered=new Set(insidePrimaries[0].arcPockets.map(String));
+      const newPockets=cand.arcPockets.filter(n=>!alreadyCovered.has(String(n)));
       if(newPockets.length>=MIN_NEW_ARC_POCKETS) insidePrimaries.push(cand);
     }
   }
@@ -667,7 +623,6 @@ function buildPortfolio(hotArcs){
   insidePrimaries.forEach(p=>p.nums.forEach(n=>insideCovered.add(String(n))));
   const arcPocketsInWheelOrder=WHEEL.filter(n=>arcPocketSet.has(String(n)));
   const uncoveredArcPockets=arcPocketsInWheelOrder.filter(n=>!insideCovered.has(String(n)));
-
   const straightNums=[...uncoveredArcPockets]
     .sort((a,b)=>{
       const wh=weightedHits([b])-weightedHits([a]);
@@ -676,22 +631,18 @@ function buildPortfolio(hotArcs){
     })
     .slice(0,MAX_STRAIGHT_CHIPS)
     .sort((a,b)=>WHEEL.findIndex(x=>String(x)===String(a))-WHEEL.findIndex(x=>String(x)===String(b)));
-
   if(straightNums.length>=MIN_STRAIGHT_CHIPS){
     const straightBet=zoneInfo({
       family:'Inside',type:'Straight',name:'Straight gap-fill',range:rangeLabel(straightNums),
       payout:'35:1 each',payoutUnits:35,stakeUnits:straightNums.length,nums:straightNums,
       strategyRole:'Arc Gap-fill'
     });
-    if(straightBet.zoneP>=straightBet.hitRateMin&&straightBet.edge>=0){
-      pushPick(straightBet);
-    }
+    if(straightBet.zoneP>=straightBet.hitRateMin&&straightBet.edge>=0) pushPick(straightBet);
   }
 
   // Layer 3: Outside volume
-  const portfolioCoveredNums=new Set();
-  portfolio.forEach(p=>p.nums.forEach(n=>portfolioCoveredNums.add(String(n))));
-
+  const insidePrimaryNums=new Set();
+  insidePrimaries.forEach(p=>p.nums.forEach(n=>insidePrimaryNums.add(String(n))));
   const outsideCandidates=OUTSIDE_ZONES
     .map(z=>zoneInfo(z))
     .filter(z=>{
@@ -699,21 +650,16 @@ function buildPortfolio(hotArcs){
       if(z.arcDensity<MIN_ARC_DENSITY_OUTSIDE)return false;
       if(z.overlap<4)return false;
       if(z.arcSliceP<z.hitRateMin)return false;
-      const newFromOutside=z.arcPockets.filter(n=>!portfolioCoveredNums.has(String(n)));
-      if(newFromOutside.length<MIN_NEW_ARC_POCKETS)return false;
+      const straightOnlyArcPockets=z.arcPockets.filter(n=>!insidePrimaryNums.has(String(n)));
+      if(straightOnlyArcPockets.length<MIN_NEW_ARC_POCKETS)return false;
       return true;
     })
     .sort((a,b)=>b.score-a.score);
+  if(outsideCandidates.length>0) pushPick({...outsideCandidates[0],strategyRole:'Outside Volume'});
 
-  if(outsideCandidates.length>0){
-    pushPick({...outsideCandidates[0],strategyRole:'Outside Volume'});
-  }
-
-  if(insidePrimaries.length===0&&portfolio.length===0)return[];
   return portfolio;
 }
 
-// ── RENDER ──
 function highlightHotArc(hotArcs){
   document.querySelectorAll('.nb').forEach(b=>b.classList.remove('arc-hot'));
   hotArcs.forEach(arc=>arc.nums.forEach(n=>{
@@ -726,7 +672,6 @@ function renderPlays(){
   const arcSummaryEl=document.getElementById('arcSummary');
   const recencyEl=document.getElementById('recencyNote');
   const el=document.getElementById('guidePanel');
-
   if(totalSpins<MIN_SPINS_FOR_PLAYS){
     highlightHotArc([]);
     arcSummaryEl.innerHTML='';
@@ -734,30 +679,23 @@ function renderPlays(){
     el.innerHTML=`<div class="no-signal">Log at least ${MIN_SPINS_FOR_PLAYS} spins<br>to detect arc bias.</div>`;
     return;
   }
-
   const arcs=getArcs();
   const hotArcs=getHotArcs(arcs);
   highlightHotArc(hotArcs);
-
-  const gateText=`arc bias ≥ ${minArcBiasPct().toFixed(1)}% · z ≥ ${minArcZ().toFixed(2)} · inside primary arc density ≥ ${Math.round(MIN_ARC_DENSITY_INSIDE_PRIMARY*100)}% · outside arc density ≥ ${Math.round(MIN_ARC_DENSITY_OUTSIDE*100)}% · outside gated on arc-slice p · straight BE+`;
+  const gateText=`arc bias ≥ ${minArcBiasPct().toFixed(1)}% · z ≥ ${minArcZ().toFixed(2)} · street/corner density ≥ ${Math.round(MIN_ARC_DENSITY_STREET*100)}% · six-line density ≥ ${Math.round(MIN_ARC_DENSITY_SIXLINE*100)}% · outside density ≥ ${Math.round(MIN_ARC_DENSITY_OUTSIDE*100)}% (arc-slice p gated) · straight BE+`;
   recencyEl.innerHTML=`<div class="recency-note">↻ recency weighted · ${HALFLIFE}-spin half-life · ${totalSpins} spins · ${gateText}</div>`;
-
   if(hotArcs.length===0){
     arcSummaryEl.innerHTML='';
     el.innerHTML='<div class="no-signal">No qualified hot arcs detected.<br>Keep logging spins.</div>';
     return;
   }
-
   const arcDesc=hotArcs.map(a=>`<b>${a.name}</b> ${a.nums.length}p +${a.bias.toFixed(1)}% · z ${a.z.toFixed(2)}`).join(' · ');
   arcSummaryEl.innerHTML=`<div class="arc-summary">${arcDesc}</div>`;
-
   const portfolio=buildPortfolio(hotArcs);
-
   if(portfolio.length===0){
     el.innerHTML='<div class="no-signal">Hot arc found, but no play<br>clears the hit-rate and coverage filters.</div>';
     return;
   }
-
   const finalCoverage=portfolio[portfolio.length-1].coverageAfter;
   const hasInsidePrimary=portfolio.some(p=>p.strategyRole==='Inside Primary');
   const hasGapFill=portfolio.some(p=>p.strategyRole==='Arc Gap-fill');
@@ -766,13 +704,8 @@ function renderPlays(){
   if(hasInsidePrimary)layerParts.push('Inside Primary');
   if(hasGapFill)layerParts.push('Straight Gap-fill');
   if(hasOutside)layerParts.push('Outside Volume');
-  const typeMix=layerParts.join(' + ') || 'Straight Gap-fill';
-
-  let html=`<div class="portfolio-header">
-    <span>Portfolio · ${portfolio.length} bet${portfolio.length>1?'s':''} · ${typeMix}</span>
-    <span class="coverage-total">${finalCoverage}% arc covered</span>
-  </div>`;
-
+  const typeMix=layerParts.join(' + ')||'Straight Gap-fill';
+  let html=`<div class="portfolio-header"><span>Portfolio · ${portfolio.length} bet${portfolio.length>1?'s':''} · ${typeMix}</span><span class="coverage-total">${finalCoverage}% arc covered</span></div>`;
   html+='<div class="plays-list">';
   portfolio.forEach((p,i)=>{
     const isBest=i===0;
@@ -784,48 +717,31 @@ function renderPlays(){
     const arcDensPx=Math.round((p.arcDensity||0)*48);
     const precPct=Math.round((p.precision||0)*100);
     const covColor=p.family==='Outside'?'var(--amber)':p.strategyRole==='Arc Gap-fill'?'var(--purple)':'var(--green)';
-    const isFirst=i===0;
-    const marginalLabel=isFirst
-      ? `+${p.marginalNew} arc pockets covered (${p.marginalPct}% of arc)`
-      : p.marginalNew>0
-        ? `+${p.marginalNew} new pockets · ${p.coverageAfter}% arc total`
-        : `no new pockets added`;
+    const marginalLabel=i===0
+      ?`+${p.marginalNew} arc pockets covered (${p.marginalPct}% of arc)`
+      :p.marginalNew>0
+        ?`+${p.marginalNew} new pockets · ${p.coverageAfter}% arc total`
+        :`no new pockets added`;
     const marginalCls=p.marginalNew>0?'marginal-row':'marginal-row no-new';
     const displayP=p.family==='Outside'?p.arcSliceP:p.zoneP;
     const pLabel=p.family==='Outside'?'arc-slice p':'p';
-
     html+=`<div class="play-row">
       <div class="play-rank">${i+1}</div>
       <div class="play-body">
-        <div class="play-name">
-          ${label}
-          ${isBest?'<span class="best-badge">Best</span>':''}
-          <span class="payout-badge">${p.payout}</span>
-          ${stakeBadge}
-          ${roleBadge}
-          <span class="edge-badge">edge ${formatSignedPct(p.edge,1)}</span>
-        </div>
-        <div class="play-meta">
-          <span class="cov-track"><span class="cov-fill" style="width:${arcDensPx}px;background:${covColor};"></span></span>
-          ${arcDensPct}% arc density · ${precPct}% precision · ${p.overlap}/${p.arcSize}arc in ${p.arcName} · ${pLabel} ${formatPct(displayP,1)} / min ${formatPct(p.hitRateMin,0)}
-        </div>
+        <div class="play-name">${label}${isBest?'<span class="best-badge">Best</span>':''}<span class="payout-badge">${p.payout}</span>${stakeBadge}${roleBadge}<span class="edge-badge">edge ${formatSignedPct(p.edge,1)}</span></div>
+        <div class="play-meta"><span class="cov-track"><span class="cov-fill" style="width:${arcDensPx}px;background:${covColor};"></span></span>${arcDensPct}% arc density · ${precPct}% precision · ${p.overlap}/${p.arcSize}arc in ${p.arcName} · ${pLabel} ${formatPct(displayP,1)} / min ${formatPct(p.hitRateMin,0)}</div>
         <div class="${marginalCls}">${marginalLabel}</div>
       </div>
-      <div class="play-right">
-        <div class="play-score">${p.score.toFixed(2)}</div>
-        <div class="play-score-label">score</div>
-      </div>
+      <div class="play-right"><div class="play-score">${p.score.toFixed(2)}</div><div class="play-score-label">score</div></div>
     </div>`;
   });
   html+='</div>';
   el.innerHTML=html;
 }
 
-
 function escapeHtml(v){
   return String(v).replace(/[&<>'"]/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[ch]));
 }
-
 function currentSignal(){
   if(totalSpins<MIN_SPINS_FOR_PLAYS)return{status:'need_spins',arcs:[],hotArcs:[],portfolio:[]};
   const arcs=getArcs();
@@ -833,7 +749,6 @@ function currentSignal(){
   const portfolio=hotArcs.length?buildPortfolio(hotArcs):[];
   return{status:'ok',arcs,hotArcs,portfolio};
 }
-
 function placementText(p){
   if(p.type==='Straight')return `Place 1 straight-up chip on each uncovered hot-arc pocket shown: ${rangeLabel(p.nums)}.`;
   if(p.family==='Sector')return `Straight-up chips on each pocket shown: ${rangeLabel(p.nums)}.`;
@@ -849,7 +764,6 @@ function placementText(p){
   if(p.type==='Top Line')return `Place 1 chip on the American top-line / basket: ${p.range}.`;
   return `Place 1 chip on ${p.name}: ${p.range}.`;
 }
-
 function buildBetRankMap(portfolio){
   const m={};
   portfolio.forEach((p,idx)=>{
@@ -861,22 +775,18 @@ function buildBetRankMap(portfolio){
   });
   return m;
 }
-
 function chipStackHtml(ranks){
   if(!ranks||ranks.length===0)return'';
   return `<span class="chip-stack">${ranks.slice(0,4).map(r=>`<span class="mini-chip r${r}">${r}</span>`).join('')}</span>`;
 }
-
 function tableCell(n,rankMap){
   const ranks=rankMap[String(n)]||[];
   const cls=`tcell ${numColor(n)} ${ranks.length?'bet-hit':''}`;
   return `<div class="${cls}">${escapeHtml(n)}${chipStackHtml(ranks)}</div>`;
 }
-
 function outsideActive(portfolio,type,name){
   return portfolio.some(p=>p.type===type&&p.name===name);
 }
-
 function renderRouletteBoard(portfolio){
   const rankMap=buildBetRankMap(portfolio);
   const row3=[3,6,9,12,15,18,21,24,27,30,33,36];
@@ -884,33 +794,14 @@ function renderRouletteBoard(portfolio){
   const row1=[1,4,7,10,13,16,19,22,25,28,31,34];
   const rows=[row3,row2,row1];
   const active=(type,name)=>outsideActive(portfolio,type,name)?' active':'';
-
   return `<div class="table-scroll"><div class="roulette-table">
     <div class="zero-and-numbers">
       <div class="zero-stack">${tableCell(0,rankMap)}${tableCell('00',rankMap)}</div>
       <div class="table-num-grid">${rows.map(row=>row.map(n=>tableCell(n,rankMap)).join('')).join('')}</div>
     </div>
-    <div class="dozen-row">
-      <div></div>
-      <div class="outside-box${active('Dozen','1st dozen')}">1st 12</div>
-      <div class="outside-box${active('Dozen','2nd dozen')}">2nd 12</div>
-      <div class="outside-box${active('Dozen','3rd dozen')}">3rd 12</div>
-    </div>
-    <div class="outside-row">
-      <div></div>
-      <div class="outside-box${active('Half','Low')}">1–18<br>Low</div>
-      <div class="outside-box">Even</div>
-      <div class="outside-box">Red</div>
-      <div class="outside-box">Black</div>
-      <div class="outside-box">Odd</div>
-      <div class="outside-box${active('Half','High')}">19–36<br>High</div>
-    </div>
-    <div class="outside-row" style="grid-template-columns:58px repeat(3,1fr);margin-top:4px;">
-      <div></div>
-      <div class="outside-box${active('Column','1st col')}">1st Column<br>1,4,7…</div>
-      <div class="outside-box${active('Column','2nd col')}">2nd Column<br>2,5,8…</div>
-      <div class="outside-box${active('Column','3rd col')}">3rd Column<br>3,6,9…</div>
-    </div>
+    <div class="dozen-row"><div></div><div class="outside-box${active('Dozen','1st dozen')}">1st 12</div><div class="outside-box${active('Dozen','2nd dozen')}">2nd 12</div><div class="outside-box${active('Dozen','3rd dozen')}">3rd 12</div></div>
+    <div class="outside-row"><div></div><div class="outside-box${active('Half','Low')}">1–18<br>Low</div><div class="outside-box">Even</div><div class="outside-box">Red</div><div class="outside-box">Black</div><div class="outside-box">Odd</div><div class="outside-box${active('Half','High')}">19–36<br>High</div></div>
+    <div class="outside-row" style="grid-template-columns:58px repeat(3,1fr);margin-top:4px;"><div></div><div class="outside-box${active('Column','1st col')}">1st Column<br>1,4,7…</div><div class="outside-box${active('Column','2nd col')}">2nd Column<br>2,5,8…</div><div class="outside-box${active('Column','3rd col')}">3rd Column<br>3,6,9…</div></div>
   </div></div>`;
 }
 
@@ -919,24 +810,17 @@ function renderTable(){
   const boardEl=document.getElementById('tableBoardWrap');
   const ticketsEl=document.getElementById('tableTickets');
   if(!summaryEl||!boardEl||!ticketsEl)return;
-
   if(totalSpins<MIN_SPINS_FOR_PLAYS){
-    summaryEl.innerHTML='';
-    boardEl.innerHTML='';
+    summaryEl.innerHTML=''; boardEl.innerHTML='';
     ticketsEl.innerHTML=`<div class="no-signal">Log at least ${MIN_SPINS_FOR_PLAYS} spins<br>to show table placements.</div>`;
     return;
   }
-
   const {hotArcs,portfolio}=currentSignal();
   if(hotArcs.length===0){
-    summaryEl.innerHTML='';
-    boardEl.innerHTML='';
+    summaryEl.innerHTML=''; boardEl.innerHTML='';
     ticketsEl.innerHTML='<div class="no-signal">No qualified hot arcs detected.<br>Table placement will appear after a play qualifies.</div>';
     return;
   }
-
-  const arcPocketSet=new Set();
-  hotArcs.forEach(a=>a.nums.forEach(n=>arcPocketSet.add(String(n))));
   if(portfolio.length===0){
     const arcDesc=hotArcs.map(a=>`<b>${a.name}</b> ${a.nums.length}p +${a.bias.toFixed(1)}% · z ${a.z.toFixed(2)}`).join(' · ');
     summaryEl.innerHTML=`<div class="table-help">${arcDesc}</div>`;
@@ -944,18 +828,11 @@ function renderTable(){
     ticketsEl.innerHTML='<div class="no-signal">Hot arc found, but no table play clears the filters.</div>';
     return;
   }
-
   const finalCoverage=portfolio[portfolio.length-1].coverageAfter;
   const totalStake=portfolio.reduce((s,p)=>s+betStakeUnits(p),0);
   const arcDesc=hotArcs.map(a=>`<b>${a.name}</b> ${a.nums.length}p +${a.bias.toFixed(1)}% · z ${a.z.toFixed(2)}`).join(' · ');
   summaryEl.innerHTML=`<div class="table-help">${arcDesc}<br>Inside primary + straight gap-fill + outside volume (when arc density ≥ 33%)<br><b>${portfolio.length}</b> table placements · <b>${totalStake}u</b> total stake · <b>${finalCoverage}%</b> hot-arc coverage</div>`;
-  boardEl.innerHTML=renderRouletteBoard(portfolio)+`<div class="table-legend">
-    <span><span class="mini-chip">1</span> Play 1</span>
-    <span><span class="mini-chip r2">2</span> Play 2</span>
-    <span><span class="mini-chip r3">3</span> Play 3</span>
-    <span><span class="mini-chip r4">4</span> Play 4</span>
-  </div>`;
-
+  boardEl.innerHTML=renderRouletteBoard(portfolio)+`<div class="table-legend"><span><span class="mini-chip">1</span> Play 1</span><span><span class="mini-chip r2">2</span> Play 2</span><span><span class="mini-chip r3">3</span> Play 3</span><span><span class="mini-chip r4">4</span> Play 4</span></div>`;
   let html='<div class="table-ticket-list">';
   portfolio.forEach((p,i)=>{
     const rank=i+1;
@@ -975,8 +852,6 @@ function renderTable(){
   ticketsEl.innerHTML=html;
 }
 
-
-// ── SIMULATOR ──
 function randomFrom(arr){ return arr[Math.floor(Math.random()*arr.length)]; }
 function randomWheelArc(size=SIM_BIAS_ARC_SIZE){
   const start=Math.floor(Math.random()*WHEEL.length);
@@ -1005,19 +880,15 @@ function simulateFairSpins(count){
 function simulateBiasedSpins(count){
   const arc=randomWheelArc();
   const spins=[];
-  for(let i=0;i<count;i++){
-    spins.push(Math.random()<SIM_BIAS_ARC_RATE?randomFrom(arc):randomFrom(ALL));
-  }
+  for(let i=0;i<count;i++) spins.push(Math.random()<SIM_BIAS_ARC_RATE?randomFrom(arc):randomFrom(ALL));
   lastSimStatus=`Added ${count} biased simulated spin${count===1?'':'s'} · ${Math.round(SIM_BIAS_ARC_RATE*100)}% from arc ${rangeLabel(arc)}.`;
   batchLog(spins);
 }
 function updateSimStatus(){
   const el=document.getElementById('simStatus');
-  if(!el)return;
-  if(lastSimStatus)el.textContent=lastSimStatus;
+  if(el&&lastSimStatus)el.textContent=lastSimStatus;
 }
 
-// ── LOG ──
 function logNum(n){
   if(!VALID_NUMS.has(String(n)))return;
   const normalized=String(n)==='00'?'00':Number(n);
@@ -1028,7 +899,6 @@ function logNum(n){
   saveState();
   updateAll();
 }
-
 function undoLast(){
   if(spinLog.length===0)return;
   spinLog.pop();
@@ -1037,7 +907,6 @@ function undoLast(){
   saveState();
   updateAll();
 }
-
 function keyPress(d){
   if(currentInput.length>=2)return;
   if(currentInput==='0'&&d!=='0')currentInput=d;
@@ -1055,43 +924,30 @@ function keyLog00(){
 }
 function keyLogCurrent(){
   const value=normalizeInputValue();
-  if(value===null){
-    currentInput='';
-    updateDisplay();
-    return;
-  }
+  if(value===null){ currentInput=''; updateDisplay(); return; }
   logNum(value);
   currentInput='';
   updateDisplay();
 }
-
 function updateDisplay(){
   const el=document.getElementById('numDisplay');
   const lbl=document.getElementById('numDisplayLabel');
   const logBtn=document.getElementById('keyLogBtn');
-
   if(!currentInput){
-    el.textContent='—';
-    el.className='num-display-val empty';
-    lbl.textContent='enter number';
-    logBtn.classList.add('disabled');
+    el.textContent='—'; el.className='num-display-val empty';
+    lbl.textContent='enter number'; logBtn.classList.add('disabled');
     return;
   }
-
   const value=normalizeInputValue();
   el.textContent=currentInput;
-
   if(value===null){
-    el.className='num-display-val';
-    lbl.textContent='invalid';
-    logBtn.classList.add('disabled');
+    el.className='num-display-val'; lbl.textContent='invalid'; logBtn.classList.add('disabled');
   }else{
     el.className='num-display-val '+numColor(value)+'-num';
     lbl.textContent=numLabel(value);
     logBtn.classList.remove('disabled');
   }
 }
-
 function updateHistory(){
   const el=document.getElementById('histRow');
   const recent=[...spinLog].reverse().slice(0,20);
@@ -1101,13 +957,11 @@ function updateHistory(){
   }
   el.innerHTML=recent.map(n=>`<span class="hchip ${numColor(n)}">${n}</span>`).join('');
 }
-
 function updateStats(){
   document.getElementById('totalSpins').textContent=totalSpins;
   const seen=new Set(spinLog.map(String));
   document.getElementById('uniqueNums').textContent=seen.size;
   document.getElementById('spinBadge').textContent=totalSpins+' spin'+(totalSpins===1?'':'s');
-
   if(totalSpins>0){
     const raw={};
     ALL.forEach(n=>raw[String(n)]=0);
@@ -1123,7 +977,6 @@ function updateStats(){
     ['hotPct','coldPct'].forEach(id=>document.getElementById(id).textContent='—');
   }
 }
-
 function updateAll(){
   updateStats();
   updateHistory();
@@ -1131,19 +984,14 @@ function updateAll(){
   renderPlays();
   renderTable();
 }
-
 function resetAll(){
-  spinLog=[];
-  totalSpins=0;
-  currentInput='';
-  lastSimStatus='';
+  spinLog=[]; totalSpins=0; currentInput=''; lastSimStatus='';
   try{ localStorage.removeItem(STORAGE_KEY); }catch(e){}
   document.querySelectorAll('.nb').forEach(b=>b.classList.remove('hit','arc-hot'));
   updateDisplay();
   updateAll();
 }
 
-// ── WHEEL BUILD ──
 function buildWheel(){
   const g=document.getElementById('wheelGrid');
   g.innerHTML='';
@@ -1155,7 +1003,6 @@ function buildWheel(){
     b.onclick=()=>{ logNum(n); };
     g.appendChild(b);
   });
-
   const wo=document.getElementById('wheelOrder');
   wo.innerHTML='';
   WHEEL.forEach(n=>{
