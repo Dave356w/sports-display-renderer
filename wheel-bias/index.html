@@ -133,39 +133,30 @@ html,body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-seri
 .table-status b{color:var(--amber);}
 .table-status.no-arc{border-left-color:var(--text3);color:var(--text3);}
 
-/* Board scales to portrait. Full grid: 13 cols × 5 rows.
-   Col 0 = zeros (spans 3 number rows), cols 1-12 = numbers */
-.roulette-board{
-  width:100%;
-  display:grid;
-  grid-template-columns:calc((100vw - 60px)/13) repeat(12,1fr);
-  grid-template-rows:repeat(3,calc((100vw - 60px)/13)) 28px 28px 28px;
-  gap:3px;
-  margin-bottom:10px;
+/* Portrait roulette board: 0/00 at top, then 12 rows × 3 cols, then outside bets */
+.portrait-board{width:100%;display:flex;flex-direction:column;gap:3px;margin-bottom:12px;}
+.pb-row{display:grid;gap:3px;}
+.pb-zeros{grid-template-columns:1fr 1fr;}
+.pb-numbers{grid-template-columns:repeat(3,1fr);}
+.pb-cols{grid-template-columns:repeat(3,1fr);}
+.pb-dozens{grid-template-columns:repeat(3,1fr);}
+.pb-halves{grid-template-columns:repeat(6,1fr);}
+.pcell{
+  border-radius:5px;display:flex;align-items:center;justify-content:center;
+  font-family:'DM Mono',monospace;font-size:clamp(14px,4vw,20px);font-weight:700;
+  border:1px solid rgba(255,255,255,.2);aspect-ratio:1.2;
 }
-.bcell{
-  border-radius:4px;
+.pcell.red{background:#7e1515;color:#ffb6b6;}
+.pcell.black{background:#151515;color:#ccc;}
+.pcell.green{background:#075a38;color:#67e6c0;}
+.pcell.bet-on{box-shadow:0 0 0 2.5px var(--amber);background-color:rgba(253,203,110,.22);}
+.pob{
+  border-radius:5px;border:1px solid rgba(255,255,255,.15);
   display:flex;align-items:center;justify-content:center;
-  font-family:'DM Mono',monospace;font-size:clamp(9px,2.2vw,13px);font-weight:600;
-  border:1px solid rgba(255,255,255,.2);
+  font-family:'DM Mono',monospace;font-size:clamp(9px,2.5vw,11px);
+  color:rgba(255,255,255,.4);background:rgba(255,255,255,.04);
+  text-align:center;line-height:1.2;padding:7px 3px;
 }
-.bcell.red{background:#7e1515;color:#ffb6b6;}
-.bcell.black{background:#151515;color:#ccc;}
-.bcell.green{background:#075a38;color:#67e6c0;}
-.bcell.bet-on{box-shadow:0 0 0 2.5px var(--amber);background-color:rgba(253,203,110,.22);}
-.bcell.zero-0{grid-column:1;grid-row:1;}
-.bcell.zero-00{grid-column:1;grid-row:2;}
-.bcell.zero-pad{grid-column:1;grid-row:3;background:transparent;border-color:transparent;}
-.ob{
-  border-radius:4px;border:1px solid rgba(255,255,255,.15);
-  display:flex;align-items:center;justify-content:center;
-  font-family:'DM Mono',monospace;font-size:clamp(8px,1.8vw,10px);
-  color:rgba(255,255,255,.4);background:rgba(255,255,255,.03);
-  text-align:center;line-height:1.1;
-}
-.ob.span4{grid-column:span 4;}
-.ob.span2{grid-column:span 2;}
-.ob-spacer{border:none;background:transparent;}
 
 /* Pocket chips strip below board */
 .pocket-strip{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px;}
@@ -663,23 +654,25 @@ function currentSignal(){
 
 function renderRouletteBoard(betNums){
   const bet=betNums||new Set();
-  function bc(n,extraCls){
+  function pc(n){
     const on=bet.has(String(n));
-    return `<div class="bcell ${numColor(n)}${on?' bet-on':''}${extraCls?' '+extraCls:''}">${escapeHtml(n)}</div>`;
+    return `<div class="pcell ${numColor(n)}${on?' bet-on':''}">${escapeHtml(n)}</div>`;
   }
-  function ob(label,span){
-    return `<div class="ob${span?' span'+span:''}">${label}</div>`;
+  function pob(label){ return `<div class="pob">${label}</div>`; }
+
+  // 12 rows of 3: 1,2,3 / 4,5,6 / … / 34,35,36
+  let numCells='';
+  for(let r=0;r<12;r++){
+    const b=r*3+1;
+    numCells+=pc(b)+pc(b+1)+pc(b+2);
   }
-  const r3=[3,6,9,12,15,18,21,24,27,30,33,36];
-  const r2=[2,5,8,11,14,17,20,23,26,29,32,35];
-  const r1=[1,4,7,10,13,16,19,22,25,28,31,34];
-  return `<div class="roulette-board">
-    ${bc(0,'zero-0')}${r3.map(n=>bc(n)).join('')}
-    ${bc('00','zero-00')}${r2.map(n=>bc(n)).join('')}
-    <div class="bcell zero-pad"></div>${r1.map(n=>bc(n)).join('')}
-    <div class="ob-spacer"></div>${ob('1st 12',4)}${ob('2nd 12',4)}${ob('3rd 12',4)}
-    <div class="ob-spacer"></div>${ob('1-18',2)}${ob('Even',2)}${ob('Red',2)}${ob('Black',2)}${ob('Odd',2)}${ob('19-36',2)}
-    <div class="ob-spacer"></div>${ob('Col 1',4)}${ob('Col 2',4)}${ob('Col 3',4)}
+
+  return `<div class="portrait-board">
+    <div class="pb-row pb-zeros">${pc(0)}${pc('00')}</div>
+    <div class="pb-row pb-numbers">${numCells}</div>
+    <div class="pb-row pb-cols">${pob('2:1<br>Col 1')}${pob('2:1<br>Col 2')}${pob('2:1<br>Col 3')}</div>
+    <div class="pb-row pb-dozens">${pob('1st 12<br>1–12')}${pob('2nd 12<br>13–24')}${pob('3rd 12<br>25–36')}</div>
+    <div class="pb-row pb-halves">${pob('1–18')}${pob('Even')}${pob('Red')}${pob('Black')}${pob('Odd')}${pob('19–36')}</div>
   </div>`;
 }
 
