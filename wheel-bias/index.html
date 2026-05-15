@@ -562,7 +562,9 @@ function buildPortfolio(hotArcs){
       const arcSize=Math.max(1,arc.nums.length);
       const arcDensity=overlap/arcSize;
       const precision=overlap/Math.max(1,zone.nums.length);
-      const score=arcDensity*arc.bias*arc.z*(betPayoutUnits(zone)/35+0.5);
+      const arcPocketsInBet=zone.nums.filter(n=>aSet.has(String(n)));
+      const pocketHeat=weightedHits(arcPocketsInBet);
+      const score=arcDensity*arc.bias*arc.z*(betPayoutUnits(zone)/35+0.5)+pocketHeat*0.001;
       if(score>bestScore){
         bestScore=score; bestArcDensity=arcDensity; bestPrecision=precision;
         bestArcName=arc.name; bestBias=arc.bias; bestZ=arc.z;
@@ -674,8 +676,7 @@ function renderPlays(){
   const el=document.getElementById('guidePanel');
   if(totalSpins<MIN_SPINS_FOR_PLAYS){
     highlightHotArc([]);
-    arcSummaryEl.innerHTML='';
-    recencyEl.innerHTML='';
+    arcSummaryEl.innerHTML=''; recencyEl.innerHTML='';
     el.innerHTML=`<div class="no-signal">Log at least ${MIN_SPINS_FOR_PLAYS} spins<br>to detect arc bias.</div>`;
     return;
   }
@@ -719,9 +720,7 @@ function renderPlays(){
     const covColor=p.family==='Outside'?'var(--amber)':p.strategyRole==='Arc Gap-fill'?'var(--purple)':'var(--green)';
     const marginalLabel=i===0
       ?`+${p.marginalNew} arc pockets covered (${p.marginalPct}% of arc)`
-      :p.marginalNew>0
-        ?`+${p.marginalNew} new pockets · ${p.coverageAfter}% arc total`
-        :`no new pockets added`;
+      :p.marginalNew>0?`+${p.marginalNew} new pockets · ${p.coverageAfter}% arc total`:`no new pockets added`;
     const marginalCls=p.marginalNew>0?'marginal-row':'marginal-row no-new';
     const displayP=p.family==='Outside'?p.arcSliceP:p.zoneP;
     const pLabel=p.family==='Outside'?'arc-slice p':'p';
@@ -766,13 +765,7 @@ function placementText(p){
 }
 function buildBetRankMap(portfolio){
   const m={};
-  portfolio.forEach((p,idx)=>{
-    p.nums.forEach(n=>{
-      const key=String(n);
-      if(!m[key])m[key]=[];
-      m[key].push(idx+1);
-    });
-  });
+  portfolio.forEach((p,idx)=>p.nums.forEach(n=>{ const k=String(n); if(!m[k])m[k]=[]; m[k].push(idx+1); }));
   return m;
 }
 function chipStackHtml(ranks){
@@ -781,18 +774,14 @@ function chipStackHtml(ranks){
 }
 function tableCell(n,rankMap){
   const ranks=rankMap[String(n)]||[];
-  const cls=`tcell ${numColor(n)} ${ranks.length?'bet-hit':''}`;
-  return `<div class="${cls}">${escapeHtml(n)}${chipStackHtml(ranks)}</div>`;
+  return `<div class="tcell ${numColor(n)} ${ranks.length?'bet-hit':''}">${escapeHtml(n)}${chipStackHtml(ranks)}</div>`;
 }
 function outsideActive(portfolio,type,name){
   return portfolio.some(p=>p.type===type&&p.name===name);
 }
 function renderRouletteBoard(portfolio){
   const rankMap=buildBetRankMap(portfolio);
-  const row3=[3,6,9,12,15,18,21,24,27,30,33,36];
-  const row2=[2,5,8,11,14,17,20,23,26,29,32,35];
-  const row1=[1,4,7,10,13,16,19,22,25,28,31,34];
-  const rows=[row3,row2,row1];
+  const rows=[[3,6,9,12,15,18,21,24,27,30,33,36],[2,5,8,11,14,17,20,23,26,29,32,35],[1,4,7,10,13,16,19,22,25,28,31,34]];
   const active=(type,name)=>outsideActive(portfolio,type,name)?' active':'';
   return `<div class="table-scroll"><div class="roulette-table">
     <div class="zero-and-numbers">
@@ -860,10 +849,7 @@ function randomWheelArc(size=SIM_BIAS_ARC_SIZE){
   return out;
 }
 function batchLog(nums){
-  nums.forEach(n=>{
-    if(!VALID_NUMS.has(String(n)))return;
-    spinLog.push(String(n)==='00'?'00':Number(n));
-  });
+  nums.forEach(n=>{ if(!VALID_NUMS.has(String(n)))return; spinLog.push(String(n)==='00'?'00':Number(n)); });
   totalSpins=spinLog.length;
   currentInput='';
   restoreHitMarkers();
@@ -913,21 +899,12 @@ function keyPress(d){
   else currentInput+=d;
   updateDisplay();
 }
-function keyDel(){
-  currentInput=currentInput.slice(0,-1);
-  updateDisplay();
-}
-function keyLog00(){
-  logNum('00');
-  currentInput='';
-  updateDisplay();
-}
+function keyDel(){ currentInput=currentInput.slice(0,-1); updateDisplay(); }
+function keyLog00(){ logNum('00'); currentInput=''; updateDisplay(); }
 function keyLogCurrent(){
   const value=normalizeInputValue();
   if(value===null){ currentInput=''; updateDisplay(); return; }
-  logNum(value);
-  currentInput='';
-  updateDisplay();
+  logNum(value); currentInput=''; updateDisplay();
 }
 function updateDisplay(){
   const el=document.getElementById('numDisplay');
@@ -977,19 +954,12 @@ function updateStats(){
     ['hotPct','coldPct'].forEach(id=>document.getElementById(id).textContent='—');
   }
 }
-function updateAll(){
-  updateStats();
-  updateHistory();
-  updateSimStatus();
-  renderPlays();
-  renderTable();
-}
+function updateAll(){ updateStats(); updateHistory(); updateSimStatus(); renderPlays(); renderTable(); }
 function resetAll(){
   spinLog=[]; totalSpins=0; currentInput=''; lastSimStatus='';
   try{ localStorage.removeItem(STORAGE_KEY); }catch(e){}
   document.querySelectorAll('.nb').forEach(b=>b.classList.remove('hit','arc-hot'));
-  updateDisplay();
-  updateAll();
+  updateDisplay(); updateAll();
 }
 
 function buildWheel(){
