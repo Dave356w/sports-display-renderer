@@ -1,0 +1,19 @@
+game_pk,game_date,matchup,side,pitcher,throws,opp_team,n_opp,n_LHB,n_RHB,n_SW,n_platoon_adv,n_low_sample,pit_min_split_bf,pit_low_sample,reliable,opp_OPS_raw,opp_OPS_vs_hand,pit_OPS_raw,pit_OPS_allowed,mx_OPS,edge_OPS
+822884,2026-07-02,Detroit Tigers @ Texas Rangers,away,Framber Valdez,L,Texas Rangers,9,5,4,0,4,3,98,False,True,0.716,0.719,0.679,0.682,0.695,-0.045
+822884,2026-07-02,Detroit Tigers @ Texas Rangers,home,Nathan Eovaldi,R,Detroit Tigers,9,5,4,0,5,0,184,False,True,0.756,0.759,0.715,0.723,0.735,-0.005
+823119,2026-07-02,Los Angeles Angels @ Seattle Mariners,away,Walbert Ureña,R,Seattle Mariners,9,6,2,1,7,0,152,False,True,0.758,0.758,0.651,0.679,0.676,-0.064
+823119,2026-07-02,Los Angeles Angels @ Seattle Mariners,home,Bryce Miller,R,Los Angeles Angels,9,3,6,0,3,0,75,False,True,0.703,0.706,0.583,0.627,0.608,-0.132
+823442,2026-07-02,Pittsburgh Pirates @ Philadelphia Phillies,away,Jared Jones,R,Philadelphia Phillies,9,5,4,0,5,0,47,True,False,0.778,0.774,0.814,0.789,0.826,0.086
+823442,2026-07-02,Pittsburgh Pirates @ Philadelphia Phillies,home,Alan Rangel,R,Pittsburgh Pirates,9,2,5,2,4,0,19,True,False,0.763,0.76,0.631,0.723,0.746,0.006
+823765,2026-07-02,Cincinnati Reds @ Milwaukee Brewers,away,Chase Burns,R,Milwaukee Brewers,9,6,3,0,6,0,146,False,True,0.791,0.785,0.638,0.661,0.689,-0.051
+823765,2026-07-02,Cincinnati Reds @ Milwaukee Brewers,home,Jacob Misiorowski,R,Cincinnati Reds,9,3,5,1,4,0,176,False,True,0.711,0.718,0.431,0.481,0.47,-0.27
+823935,2026-07-02,San Diego Padres @ Los Angeles Dodgers,away,Randy Vásquez,R,Los Angeles Dodgers,9,5,3,1,6,0,148,False,True,0.831,0.821,0.841,0.829,0.901,0.161
+823935,2026-07-02,San Diego Padres @ Los Angeles Dodgers,home,Roki Sasaki,R,San Diego Padres,9,3,6,0,3,0,142,False,True,0.66,0.675,0.789,0.768,0.708,-0.032
+824093,2026-07-02,Tampa Bay Rays @ Kansas City Royals,away,Ian Seymour,L,Kansas City Royals,9,3,5,1,6,0,82,False,True,0.737,0.722,0.665,0.678,0.675,-0.065
+824093,2026-07-02,Tampa Bay Rays @ Kansas City Royals,home,Stephen Kolek,R,Tampa Bay Rays,9,4,4,1,5,0,95,False,True,0.783,0.779,0.736,0.74,0.773,0.033
+824335,2026-07-02,Miami Marlins @ Colorado Rockies,away,Ryan Gusto,R,Colorado Rockies,9,4,4,1,5,0,39,True,False,0.769,0.767,0.734,0.749,0.768,0.028
+824335,2026-07-02,Miami Marlins @ Colorado Rockies,home,Michael Lorenzen,R,Miami Marlins,9,5,3,1,6,0,194,False,True,0.753,0.757,0.983,0.932,0.939,0.199
+824416,2026-07-02,Chicago White Sox @ Cleveland Guardians,away,Davis Martin,R,Cleveland Guardians,9,5,2,2,7,0,154,False,True,0.691,0.704,0.657,0.683,0.626,-0.114
+824416,2026-07-02,Chicago White Sox @ Cleveland Guardians,home,Slade Cecconi,R,Chicago White Sox,9,4,4,1,5,0,171,False,True,0.747,0.755,0.741,0.743,0.747,0.007
+824906,2026-07-02,St. Louis Cardinals @ Atlanta Braves,away,Dustin May,R,Atlanta Braves,9,5,3,1,6,0,132,False,True,0.747,0.752,0.7,0.715,0.716,-0.024
+824906,2026-07-02,St. Louis Cardinals @ Atlanta Braves,home,Hurston Waldrep,R,St. Louis Cardinals,9,4,5,0,4,0,6,True,False,0.78,0.771,0.75,0.741,0.772,0.032
