@@ -1,1 +1,6 @@
-no graded games yet.
+LEAN LEDGER — 3 graded games  [xw+plat_consol_v1]
+xwOBA lean   full: 0-3  (0.000)   F5: 0-2-1  (0.000)
+platoon lean full: 0-1  (0.000)   F5: 0-1  (0.000)   (reliable-only, n=1)
+xwOBA on same subset  full: 0-1  (0.000)   F5: 0-1  (0.000)
+home F5 baseline: 0.500  (n=2)
+weight fit: 2 usable F5 decisions (gate 120)
