@@ -1,0 +1,31 @@
+game_pk,game_date,matchup,side,pitcher,throws,opp_team,n_opp,n_LHB,n_RHB,n_SW,n_platoon_adv,n_low_sample,pit_min_split_bf,pit_low_sample,reliable,opp_OPS_raw,opp_OPS_vs_hand,pit_OPS_raw,pit_OPS_allowed,mx_OPS,edge_OPS
+822716,2026-07-04,Pittsburgh Pirates @ Washington Nationals,away,Braxton Ashcraft,R,Washington Nationals,9,5,2,2,7,0,182,False,True,0.79,0.792,0.676,0.686,0.714,-0.029
+822716,2026-07-04,Pittsburgh Pirates @ Washington Nationals,home,Zack Littell,R,Pittsburgh Pirates,9,2,5,2,4,0,155,False,True,0.768,0.765,0.799,0.801,0.837,0.094
+822882,2026-07-04,Detroit Tigers @ Texas Rangers,away,Jack Flaherty,R,Texas Rangers,9,5,4,0,5,0,150,False,True,0.728,0.734,0.782,0.777,0.761,0.018
+822882,2026-07-04,Detroit Tigers @ Texas Rangers,home,Kumar Rocker,R,Detroit Tigers,9,5,4,0,5,0,152,False,True,0.759,0.762,0.694,0.709,0.725,-0.018
+823118,2026-07-04,Toronto Blue Jays @ Seattle Mariners,away,Shane Bieber,R,Seattle Mariners,9,6,2,1,7,0,19,True,False,0.744,0.75,1.158,0.865,0.849,0.106
+823118,2026-07-04,Toronto Blue Jays @ Seattle Mariners,home,Logan Gilbert,R,Toronto Blue Jays,9,4,4,1,5,0,169,False,True,0.739,0.739,0.661,0.675,0.67,-0.073
+823526,2026-07-04,Minnesota Twins @ New York Yankees,away,Zebby Matthews,R,New York Yankees,9,6,3,0,6,0,101,False,True,0.753,0.759,0.74,0.745,0.749,0.006
+823526,2026-07-04,Minnesota Twins @ New York Yankees,home,Brendan Beck,R,Minnesota Twins,9,2,4,3,5,0,6,True,False,0.772,0.768,0.84,0.76,0.78,0.037
+823932,2026-07-04,San Diego Padres @ Los Angeles Dodgers,away,Griffin Canning,R,Los Angeles Dodgers,9,5,3,1,6,0,83,False,True,0.827,0.82,0.862,0.834,0.905,0.162
+823932,2026-07-04,San Diego Padres @ Los Angeles Dodgers,home,Yoshinobu Yamamoto,R,San Diego Padres,9,3,6,0,3,0,183,False,True,0.693,0.697,0.559,0.591,0.561,-0.182
+824012,2026-07-04,Boston Red Sox @ Los Angeles Angels,away,Sonny Gray,R,Los Angeles Angels,9,3,6,0,3,0,127,False,True,0.694,0.699,0.657,0.671,0.64,-0.103
+824012,2026-07-04,Boston Red Sox @ Los Angeles Angels,home,Sam Aldegheri,L,Boston Red Sox,9,3,6,0,6,1,37,True,False,0.804,0.762,0.774,0.721,0.756,0.013
+824092,2026-07-04,Philadelphia Phillies @ Kansas City Royals,away,Jesús Luzardo,L,Kansas City Royals,9,3,5,1,6,0,99,False,True,0.734,0.723,0.672,0.698,0.693,-0.05
+824092,2026-07-04,Philadelphia Phillies @ Kansas City Royals,home,Michael Wacha,R,Philadelphia Phillies,9,5,4,0,5,0,186,False,True,0.775,0.771,0.682,0.691,0.705,-0.038
+824171,2026-07-04,Tampa Bay Rays @ Houston Astros,away,Drew Rasmussen,R,Houston Astros,9,1,8,0,1,0,135,False,True,0.753,0.75,0.401,0.512,0.544,-0.199
+824171,2026-07-04,Tampa Bay Rays @ Houston Astros,home,Hunter Brown,R,Tampa Bay Rays,9,4,4,1,5,0,51,False,True,0.781,0.777,0.572,0.666,0.691,-0.052
+824334,2026-07-04,San Francisco Giants @ Colorado Rockies,away,Robbie Ray,L,Colorado Rockies,9,4,4,1,5,1,103,False,True,0.744,0.747,0.657,0.671,0.695,-0.048
+824334,2026-07-04,San Francisco Giants @ Colorado Rockies,home,Tomoyuki Sugano,R,San Francisco Giants,9,5,4,0,5,0,170,False,True,0.8,0.789,0.826,0.812,0.86,0.117
+824415,2026-07-04,Chicago White Sox @ Cleveland Guardians,away,Sean Burke,R,Cleveland Guardians,9,5,2,2,7,0,150,False,True,0.699,0.709,0.713,0.725,0.672,-0.071
+824415,2026-07-04,Chicago White Sox @ Cleveland Guardians,home,Parker Messick,L,Chicago White Sox,9,4,4,1,5,2,114,False,True,0.782,0.77,0.632,0.632,0.668,-0.075
+824499,2026-07-04,Baltimore Orioles @ Cincinnati Reds,away,Brandon Young,R,Cincinnati Reds,9,3,5,1,4,0,120,False,True,0.71,0.717,0.666,0.682,0.66,-0.083
+824499,2026-07-04,Baltimore Orioles @ Cincinnati Reds,home,Hunter Greene,R,Baltimore Orioles,9,3,4,2,5,0,0,True,False,0.75,0.748,,0.749,0.748,0.005
+824658,2026-07-04,St. Louis Cardinals @ Chicago Cubs,away,Kyle Leahy,R,Chicago Cubs,9,2,6,1,3,0,168,False,True,0.753,0.751,0.75,0.757,0.78,0.037
+824658,2026-07-04,St. Louis Cardinals @ Chicago Cubs,home,Shota Imanaga,L,St. Louis Cardinals,9,4,5,0,5,1,112,False,True,0.723,0.731,0.708,0.704,0.712,-0.031
+824903,2026-07-04,New York Mets @ Atlanta Braves,away,Sean Manaea,L,Atlanta Braves,9,5,3,1,4,0,94,False,True,0.749,0.745,0.707,0.725,0.757,0.014
+824903,2026-07-04,New York Mets @ Atlanta Braves,home,Chris Sale,L,New York Mets,9,4,4,1,5,0,92,False,True,0.731,0.723,0.59,0.608,0.61,-0.133
+824983,2026-07-04,Miami Marlins @ Athletics,away,Sandy Alcantara,R,Athletics,9,4,4,1,5,0,190,False,True,0.738,0.75,0.706,0.715,0.717,-0.026
+824983,2026-07-04,Miami Marlins @ Athletics,home,Aaron Civale,R,Miami Marlins,9,5,3,1,6,0,130,False,True,0.764,0.766,0.906,0.873,0.887,0.144
+825063,2026-07-04,Milwaukee Brewers @ Arizona Diamondbacks,away,Brandon Woodruff,R,Arizona Diamondbacks,9,2,3,4,6,0,79,False,True,0.708,0.726,0.513,0.615,0.59,-0.153
+825063,2026-07-04,Milwaukee Brewers @ Arizona Diamondbacks,home,Merrill Kelly,R,Milwaukee Brewers,9,6,3,0,6,0,152,False,True,0.787,0.782,0.888,0.867,0.897,0.154
