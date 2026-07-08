@@ -37,6 +37,9 @@
 # graded F5 decisions accumulate, fits logit(home F5 win) ~ d_lineup + d_sp.
 # Symmetric log5 implies b_sp/b_lineup ≈ 1; a stable departure is the
 # reweight: net_w = d_lineup + w·d_sp.
+#
+# + market backfill: DK closing MLs via ESPN, devigged close_p_home,
+#   vs-market scoreboard (public/grades.html)
 # ============================================================
 import glob
 import math
@@ -48,9 +51,12 @@ import numpy as np
 import pandas as pd
 import requests
 
+from market_backfill import attach_market, vs_market_summary
+
 DATA_DIR    = os.environ.get("DATA_DIR", "data")
 LEDGER_PATH = os.path.join(DATA_DIR, "mlb_lean_ledger.csv")
 REPORT_PATH = os.path.join(DATA_DIR, "ledger_report.txt")
+GRADES_PATH = os.environ.get("GRADES_PATH", os.path.join("public", "grades.html"))
 MODEL_TAG   = os.environ.get("MODEL_TAG", "xw+plat_consol_v1")
 N_FIT_MIN   = 120
 _FINAL  = {"Final", "Game Over", "Completed Early"}
@@ -101,7 +107,8 @@ def load_ledger():
         led = pd.read_csv(LEDGER_PATH)
         for c in LEDGER_COLS:
             if c not in led.columns: led[c] = np.nan
-        return led[LEDGER_COLS]
+        extra = [c for c in led.columns if c not in LEDGER_COLS]  # market cols
+        return led[LEDGER_COLS + extra]
     return pd.DataFrame(columns=LEDGER_COLS)
 
 # ---- INGEST ------------------------------------------------------------
@@ -292,13 +299,145 @@ def report(led):
     with open(REPORT_PATH, "w") as f:
         f.write(txt + "\n")
 
+# ---- GRADES PAGE -------------------------------------------------------
+# public/grades.html — ledger table + vs-market scoreboard. Style tokens
+# mirror build_site.py's CSS so the page matches the matchup site.
+_GRADES_CSS = """
+:root{
+  --bg:#eef0f4; --surface:#ffffff; --surface-2:#f7f8fb; --ink:#15171c;
+  --muted:#646b78; --faint:#9aa1ad; --line:#e6e8ee; --line-2:#eef0f5;
+  --warm:206,74,46; --cool:18,138,140; --lean:88,90,196; --chip-fg:#1b1e25;
+  --mono:ui-monospace,"SF Mono","JetBrains Mono",Menlo,Consolas,monospace;
+  --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Roboto,Arial,sans-serif;
+  --shadow:0 1px 2px rgba(16,18,29,.05),0 14px 34px -22px rgba(16,18,29,.30);
+  --r:14px;
+}
+@media (prefers-color-scheme:dark){:root{
+  --bg:#0c0e13; --surface:#161a22; --surface-2:#11141b; --ink:#e9ebf0;
+  --muted:#98a0ac; --faint:#646b78; --line:#242a35; --line-2:#1b202a;
+  --warm:232,108,76; --cool:52,176,176; --lean:124,126,228; --chip-fg:#e9ebf0;
+  --shadow:0 1px 2px rgba(0,0,0,.45),0 18px 40px -24px rgba(0,0,0,.8);
+}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);
+  -webkit-font-smoothing:antialiased;padding:22px 16px 60px}
+.mx-wrap{max-width:760px;margin:0 auto}
+h1{font:700 17px/1.2 var(--sans);margin:0 0 2px}
+h1 em{font-style:normal;color:var(--muted);font-weight:500;font-size:12px;margin-left:6px}
+.model{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);
+  box-shadow:var(--shadow);padding:12px 14px;margin:14px 0}
+.model .nm{font:700 13px/1 var(--sans);letter-spacing:.02em;margin-bottom:3px}
+.model .rec{font:500 11.5px/1.4 var(--mono);color:var(--muted);margin-bottom:9px}
+.strip{display:flex;gap:6px;flex-wrap:wrap}
+.chip{flex:1 1 64px;min-width:60px;border:1px solid var(--line-2);border-radius:9px;
+  padding:6px 7px 5px;text-align:center;background:transparent}
+.chip .lab{font:600 9px/1 var(--sans);text-transform:uppercase;letter-spacing:.07em;color:var(--muted)}
+.chip .val{font:600 15px/1.15 var(--mono);color:var(--chip-fg);font-variant-numeric:tabular-nums;margin-top:2px}
+.note{font:400 11px/1.4 var(--sans);color:var(--faint);margin:6px 2px 0}
+.tblwrap{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);
+  box-shadow:var(--shadow);overflow-x:auto;margin-top:14px}
+table{border-collapse:collapse;width:100%;font:500 12px/1.35 var(--mono);
+  font-variant-numeric:tabular-nums}
+th{font:600 9.5px/1 var(--sans);text-transform:uppercase;letter-spacing:.07em;
+  color:var(--muted);text-align:left;padding:10px 10px 8px;border-bottom:1px solid var(--line);
+  white-space:nowrap}
+td{padding:7px 10px;border-bottom:1px solid var(--line-2);white-space:nowrap}
+tr:last-child td{border-bottom:0}
+td.num{text-align:right}
+.W{color:rgb(var(--cool));font-weight:700}
+.L{color:rgb(var(--warm));font-weight:700}
+.T{color:var(--muted);font-weight:700}
+.dim{opacity:.55}
+.mut{color:var(--faint)}
+"""
+
+def _fmt_ml(v):
+    v = _fx(v)
+    if v is None: return "<span class='mut'>—</span>"
+    return f"+{int(v)}" if v > 0 else f"{int(v)}"
+
+def _res(v):
+    if v is None or (isinstance(v, float) and math.isnan(v)) or v != v or not isinstance(v, str):
+        return "<span class='mut'>—</span>"
+    return f"<span class='{v}'>{v}</span>"
+
+def _lean_ml(r, lean_col):
+    """Closing ML of the lean's side; '—' when no market data."""
+    lean = r[lean_col]
+    if not isinstance(lean, str):
+        return "<span class='mut'>—</span>"
+    return _fmt_ml(r["close_home_ml"] if lean == r["home"] else r["close_away_ml"])
+
+def _model_block(name, sub, full_rec, f5_rec, m):
+    chips = "<div class='note'>no market data yet</div>"
+    if m:
+        vals = [("vs mkt", f"{m['w']}-{m['n'] - m['w']}"),
+                ("exp W", f"{m['exp']:.1f}"), ("z", f"{m['z']:+.2f}"),
+                ("flat ROI", f"{m['roi_units']:+.2f}u"),
+                ("fav agree", f"{m['fav_agree']:.0%}"), ("fav base", m["fav_baseline"])]
+        chips = "<div class='strip'>" + "".join(
+            f"<div class='chip'><div class='lab'>{k}</div><div class='val'>{v}</div></div>"
+            for k, v in vals) + "</div>"
+    return (f"<div class='model'><div class='nm'>{name}</div>"
+            f"<div class='rec'>full {full_rec} · F5 {f5_rec}{sub}</div>{chips}</div>")
+
+def write_grades_html(led, market):
+    g = led[(led["model_tag"] == MODEL_TAG) & (led["status"] != "void")].copy()
+    g = g.sort_values(["game_date", "game_pk"], ascending=[False, True])
+    gg = g[g["status"] == "graded"]
+    ov = gg[gg["ops_valid"] == True]                                  # noqa: E712
+    blocks = (
+        _model_block("xwOBA lean", "", _rec(gg["xw_full"]), _rec(gg["xw_f5"]),
+                     market.get("xwOBA")) +
+        _model_block("platoon lean", f" (reliable-only, n={len(ov)})",
+                     _rec(ov["ops_full"]), _rec(ov["ops_f5"]), market.get("platoon"))
+    )
+    rows = []
+    for _, r in g.iterrows():
+        graded = r["status"] == "graded"
+        score = (f"{int(r['full_away'])}–{int(r['full_home'])}" if graded
+                 else "<span class='mut'>—</span>")
+        pl_dim = "" if bool(r["ops_valid"]) else " class='dim'"
+        pl_lean = r["ops_lean"] if isinstance(r["ops_lean"], str) else "—"
+        rows.append(
+            f"<tr><td>{r['game_date'][5:]}</td>"
+            f"<td>{r['away']}@{r['home']}</td><td class='num'>{score}</td>"
+            f"<td>{r['xw_lean']} {_res(r['xw_full'])}</td>"
+            f"<td class='num'>{_lean_ml(r, 'xw_lean')}</td>"
+            f"<td{pl_dim}>{pl_lean} {_res(r['ops_full'])}</td>"
+            f"<td class='num'>{_lean_ml(r, 'ops_lean')}</td></tr>")
+    html = (
+        "<!doctype html><html lang='en'><head><meta charset='utf-8'>"
+        "<meta name='viewport' content='width=device-width,initial-scale=1'>"
+        f"<title>MLB lean grades</title><style>{_GRADES_CSS}</style></head><body>"
+        "<div class='mx-wrap'>"
+        f"<h1>Lean ledger<em>{len(gg)} graded · {MODEL_TAG}</em></h1>"
+        f"{blocks}"
+        "<div class='note'>closing DK moneylines via ESPN, devigged two-way. "
+        "vs-market z and flat ROI are the primary metrics (see ANALYSES.md). "
+        "— = no market data (pending game or join retry).</div>"
+        "<div class='tblwrap'><table><thead><tr>"
+        "<th>date</th><th>game</th><th>final</th><th>xw lean</th><th>xw ML</th>"
+        "<th>platoon lean</th><th>pl ML</th></tr></thead><tbody>"
+        + "".join(rows) + "</tbody></table></div></div></body></html>")
+    os.makedirs(os.path.dirname(GRADES_PATH), exist_ok=True)
+    with open(GRADES_PATH, "w") as f:
+        f.write(html)
+    print(f"wrote {GRADES_PATH}")
+
 def main():
     os.makedirs(DATA_DIR, exist_ok=True)
     led = load_ledger()
     led = ingest(led)
     led = grade(led)
+    try:
+        led = attach_market(led)      # idempotent; settled rows missing MLs only
+    except Exception as e:            # market outage must not lose the grading run
+        print(f"market backfill: FAILED ({type(e).__name__}: {e}); rows retry next run")
+    market = vs_market_summary(led) if "close_p_home" in led.columns else {}
     led.to_csv(LEDGER_PATH, index=False)
     report(led)
+    write_grades_html(led, market)
 
 if __name__ == "__main__":
     main()
