@@ -1,11 +1,11 @@
-LEAN LEDGER — 60 graded games  [xw+plat_consol_v1]
-xwOBA lean   full: 36-24  (0.600)   F5: 29-24-7  (0.547)
-platoon lean full: 25-20  (0.556)   F5: 27-14-4  (0.659)   (reliable-only, n=45)
-xwOBA on same subset  full: 26-19  (0.578)   F5: 22-19-4  (0.537)
+LEAN LEDGER — 75 graded games  [xw+plat_consol_v1]
+xwOBA lean   full: 46-29  (0.613)   F5: 38-28-9  (0.576)
+platoon lean full: 31-25  (0.554)   F5: 33-17-6  (0.660)   (reliable-only, n=56)
+xwOBA on same subset  full: 33-23  (0.589)   F5: 28-22-6  (0.560)
 xwOBA F5 by |Δ| tercile:
-  low  8-9-3  (0.471)   (Δ 0.001–0.027, n=20)
-  mid  13-6-1  (0.684)   (Δ 0.028–0.053, n=20)
-  hi   8-9-3  (0.471)   (Δ 0.059–0.266, n=20)
-DIVERGE h2h (F5): xwOBA 1 — platoon 6  (n=7)
-home F5 baseline: 0.472  (n=53)
-weight fit: 53 usable F5 decisions (gate 120)
+  low  11-10-4  (0.524)   (Δ 0.001–0.023, n=25)
+  mid  14-9-2  (0.609)   (Δ 0.026–0.050, n=25)
+  hi   13-9-3  (0.591)   (Δ 0.053–0.266, n=25)
+DIVERGE h2h (F5): xwOBA 2 — platoon 7  (n=10)
+home F5 baseline: 0.485  (n=66)
+weight fit: 66 usable F5 decisions (gate 120)
