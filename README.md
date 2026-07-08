@@ -23,10 +23,10 @@ Output is written to `public/mlb_nl_west.png`.
 
 ## Matchup site + grading ledger
 
-The repo also builds a daily MLB pitcher-vs-lineup matchup page
-(`build_site.py` → `public/index.html`, deployed to GitHub Pages) and grades
-its leans against final scores (`grade_leans.py` →
-`data/mlb_lean_ledger.csv`). See [MATCHUP_SITE.md](MATCHUP_SITE.md).
+The daily MLB matchup page, grading ledger, and vs-market scoreboard now
+live in their own repo:
+[mlb-matchup-site](https://github.com/Dave356w/mlb-matchup-site)
+(pre-split history remains here).
 
 ## License
 
