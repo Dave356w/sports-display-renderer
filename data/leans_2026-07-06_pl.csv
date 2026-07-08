@@ -1,0 +1,17 @@
+game_pk,game_date,matchup,side,pitcher,throws,opp_team,n_opp,n_LHB,n_RHB,n_SW,n_platoon_adv,n_low_sample,pit_min_split_bf,pit_low_sample,reliable,opp_OPS_raw,opp_OPS_vs_hand,pit_OPS_raw,pit_OPS_allowed,mx_OPS,edge_OPS
+822712,2026-07-06,Houston Astros @ Washington Nationals,away,Mike Burrows,R,Washington Nationals,9,4,3,2,6,0,171,False,True,0.768,0.778,0.872,0.854,0.875,0.121
+822712,2026-07-06,Houston Astros @ Washington Nationals,home,Miles Mikolas,R,Houston Astros,9,3,6,0,3,1,154,False,True,0.781,0.777,0.795,0.777,0.815,0.061
+822958,2026-07-06,New York Yankees @ Tampa Bay Rays,away,Cam Schlittler,R,Tampa Bay Rays,9,4,4,1,5,0,168,False,True,0.789,0.784,0.585,0.615,0.635,-0.119
+822958,2026-07-06,New York Yankees @ Tampa Bay Rays,home,Griffin Jax,R,New York Yankees,9,6,2,1,7,0,100,False,True,0.734,0.751,0.771,0.772,0.748,-0.006
+823036,2026-07-06,Milwaukee Brewers @ St. Louis Cardinals,away,Shane Drohan,L,St. Louis Cardinals,9,2,7,0,7,1,81,False,True,0.787,0.769,0.668,0.686,0.708,-0.046
+823036,2026-07-06,Milwaukee Brewers @ St. Louis Cardinals,home,Dustin May,R,Milwaukee Brewers,9,6,3,0,6,0,134,False,True,0.797,0.794,0.723,0.736,0.766,0.012
+823205,2026-07-06,Toronto Blue Jays @ San Francisco Giants,away,Kevin Gausman,R,San Francisco Giants,9,4,5,0,4,1,165,False,True,0.805,0.796,0.723,0.719,0.753,-0.001
+823205,2026-07-06,Toronto Blue Jays @ San Francisco Giants,home,Landen Roupp,R,Toronto Blue Jays,9,4,4,1,5,0,162,False,True,0.727,0.73,0.707,0.717,0.691,-0.063
+823282,2026-07-06,Arizona Diamondbacks @ San Diego Padres,away,Brandon Pfaadt,R,San Diego Padres,9,4,5,0,4,0,85,False,True,0.688,0.7,0.777,0.782,0.727,-0.027
+823282,2026-07-06,Arizona Diamondbacks @ San Diego Padres,home,Walker Buehler,R,Arizona Diamondbacks,9,2,4,3,5,1,162,False,True,0.703,0.726,0.724,0.732,0.697,-0.057
+823930,2026-07-06,Colorado Rockies @ Los Angeles Dodgers,away,Kyle Freeland,L,Los Angeles Dodgers,9,5,4,0,4,0,73,False,True,0.799,0.784,0.831,0.852,0.906,0.152
+823930,2026-07-06,Colorado Rockies @ Los Angeles Dodgers,home,Eric Lauer,L,Colorado Rockies,9,3,4,2,6,0,54,False,True,0.745,0.754,0.801,0.78,0.792,0.038
+824089,2026-07-06,Philadelphia Phillies @ Kansas City Royals,away,Cristopher Sánchez,L,Kansas City Royals,9,3,5,1,6,1,116,False,True,0.731,0.73,0.616,0.665,0.673,-0.081
+824089,2026-07-06,Philadelphia Phillies @ Kansas City Royals,home,Noah Cameron,L,Philadelphia Phillies,9,5,3,1,4,2,99,False,True,0.688,0.72,0.801,0.761,0.749,-0.005
+824900,2026-07-06,New York Mets @ Atlanta Braves,away,Freddy Peralta,R,Atlanta Braves,9,6,2,1,7,1,149,False,True,0.761,0.766,0.773,0.776,0.767,0.013
+824900,2026-07-06,New York Mets @ Atlanta Braves,home,Reynaldo López,R,New York Mets,9,5,2,2,7,0,98,False,True,0.732,0.741,0.71,0.732,0.701,-0.053
