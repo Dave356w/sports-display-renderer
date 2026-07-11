@@ -1,6 +1,2 @@
 __pycache__/
 *.pyc
-.savant_cache/
-# CI-generated site pages (deployed via Pages artifact, never committed)
-public/index.html
-public/grades.html
