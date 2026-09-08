@@ -27,7 +27,9 @@ Output: `public/mlb_nl_west.png`
 - games behind the division leader
 - the current week's unique NFC West matchups and Pacific kickoff times
 
-Standings and schedule data come from ESPN's keyless NFL JSON feeds. The renderer keeps the MLB implementation's 971x1619 master -> 480x800 E1002 downsample path.
+Schedule and result data come from [nflverse's `games.csv`](https://github.com/nflverse/nfldata), a keyless static file served off GitHub — no API key, quota, or user-agent gate. Standings are computed from completed regular-season games rather than read from a standings feed. The renderer keeps the MLB implementation's 971x1619 master -> 480x800 E1002 downsample path.
+
+Clubs tied on winning percentage are ordered by a fixed NFC West fallback, not the NFL's full tiebreaker sequence.
 
 Artwork lives in `assets/nfl/`: `background.png` (971x1619 master) plus one 2172x724 pennant per club (`SF.png`, `SEA.png`, `LAR.png`, `ARI.png`).
 

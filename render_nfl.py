@@ -9,13 +9,17 @@ Static artwork lives in ``assets/nfl/``. Dynamic overlays are:
   * NFC West W-L, division record, and games behind
   * the current NFL week's NFC West matchups and Pacific kickoff times
 
-Data is keyless and fetched from ESPN's public NFL JSON feeds. Set
-``NFL_SAMPLE=1`` for a deterministic 2026 Week 1 layout test.
+Schedules and results come from nflverse's ``games.csv``, a keyless static file
+served off GitHub. Standings are computed from completed regular-season games
+rather than read from a standings feed. Set ``NFL_SAMPLE=1`` for a
+deterministic 2026 Week 1 layout test.
 """
 from __future__ import annotations
 
+import csv
+import io
 import os
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
@@ -30,11 +34,17 @@ OUT = ROOT / "public" / "nfl_nfc_west.png"
 DISPLAY_TZ = ZoneInfo("America/Los_Angeles")
 DEVICE_OUTPUT_SIZE = (480, 800)
 
-ESPN_STANDINGS = "https://site.api.espn.com/apis/v2/sports/football/nfl/standings"
-ESPN_SCOREBOARD = "https://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard"
+# nflverse publishes every scheduled and completed game in one CSV. It is a
+# plain file on GitHub, not an API, so there is no key, quota, or user-agent
+# gate to trip over on a CI runner.
+GAMES_CSV = "https://raw.githubusercontent.com/nflverse/nfldata/master/data/games.csv"
+# The file's `gametime` column is a bare HH:MM in US Eastern.
+SOURCE_TZ = ZoneInfo("America/New_York")
 
 NFC_WEST = ("SF", "SEA", "LAR", "ARI")
 TIE_ORDER = {abbr: i for i, abbr in enumerate(NFC_WEST)}
+# nflverse abbreviates the Rams "LA"; the artwork and layout use "LAR".
+TEAM_ALIASES = {"LA": "LAR"}
 
 NAVY = (4, 43, 78)
 GREY = (118, 135, 148)
@@ -49,6 +59,10 @@ STAT_X = (610, 744, 865)  # W-L, DIV, GB
 DATE_X, DATE_Y = 486, 273
 PENNANT_LEFT = 48
 PENNANT_MAX_SIZE = (487, 182)
+
+# A game still counts as "this week" for a while after kickoff so the display
+# does not roll forward mid-afternoon while games are being played.
+IN_PROGRESS_GRACE = timedelta(hours=6)
 
 
 def load_font(path: str, size: int):
@@ -70,43 +84,111 @@ def http_session() -> requests.Session:
     return s
 
 
-def _stat(entry: dict, aliases: tuple[str, ...], default=None):
-    wanted = {x.lower() for x in aliases}
-    for stat in entry.get("stats", []):
-        names = {
-            str(stat.get("name", "")).lower(),
-            str(stat.get("abbreviation", "")).lower(),
-            str(stat.get("shortDisplayName", "")).lower(),
-        }
-        if names & wanted:
-            # displayValue is preferable for records such as "2-1".
-            if stat.get("displayValue") is not None and any(
-                x in wanted for x in ("divisionrecord", "div", "division")
-            ):
-                return stat["displayValue"]
-            if stat.get("value") is not None:
-                return stat["value"]
-            return stat.get("displayValue", default)
-    return default
+def team(abbr: str) -> str:
+    return TEAM_ALIASES.get(abbr, abbr)
 
 
-def _standings_entries(node):
-    """Yield ESPN standings entries without relying on one group nesting shape."""
-    if isinstance(node, dict):
-        standings = node.get("standings")
-        if isinstance(standings, dict) and isinstance(standings.get("entries"), list):
-            yield from standings["entries"]
-        for value in node.values():
-            yield from _standings_entries(value)
-    elif isinstance(node, list):
-        for value in node:
-            yield from _standings_entries(value)
+def season_for(now: datetime) -> int:
+    """The NFL season a date belongs to; January and February are last year's."""
+    return now.year - 1 if now.month < 3 else now.year
+
+
+def _kickoff(gameday: str, gametime: str) -> datetime | None:
+    try:
+        naive = datetime.strptime(f"{gameday} {gametime}", "%Y-%m-%d %H:%M")
+    except ValueError:
+        return None
+    return naive.replace(tzinfo=SOURCE_TZ).astimezone(DISPLAY_TZ)
+
+
+def _score(value: str) -> int | None:
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def fetch_games(season: int) -> list[dict]:
+    """Every game in `season`, normalised to the abbreviations the layout uses.
+
+    Falls back to the newest season in the file when `season` is not published
+    yet — the schedule usually lands in spring, months after the season flips.
+    """
+    response = http_session().get(GAMES_CSV, timeout=30)
+    response.raise_for_status()
+
+    by_season: dict[int, list[dict]] = {}
+    for row in csv.DictReader(io.StringIO(response.text)):
+        try:
+            row_season = int(row["season"])
+            week = int(row["week"])
+        except (KeyError, TypeError, ValueError):
+            continue
+        kickoff = _kickoff(row.get("gameday", ""), row.get("gametime", ""))
+        if kickoff is None:
+            continue
+        home, away = _score(row.get("home_score", "")), _score(row.get("away_score", ""))
+        by_season.setdefault(row_season, []).append({
+            "week": week,
+            "game_type": row.get("game_type", ""),
+            "dt": kickoff,
+            "home": team(row.get("home_team", "")),
+            "away": team(row.get("away_team", "")),
+            "home_score": home,
+            "away_score": away,
+            "played": home is not None and away is not None,
+            "div_game": row.get("div_game", "") == "1",
+        })
+
+    if not by_season:
+        return []
+    games = by_season.get(season)
+    if games is None:
+        games = by_season[max(by_season)]
+    return sorted(games, key=lambda g: g["dt"])
+
+
+def compute_standings(games: list[dict]) -> list[dict]:
+    """Build NFC West records from completed regular-season games."""
+    tally = {
+        abbr: {"abbr": abbr, "wins": 0, "losses": 0, "ties": 0,
+               "div_wins": 0, "div_losses": 0, "div_ties": 0}
+        for abbr in NFC_WEST
+    }
+
+    for game in games:
+        if game["game_type"] != "REG" or not game["played"]:
+            continue
+        sides = (
+            (game["home"], game["home_score"], game["away_score"]),
+            (game["away"], game["away_score"], game["home_score"]),
+        )
+        for abbr, scored, allowed in sides:
+            row = tally.get(abbr)
+            if row is None:
+                continue
+            if scored > allowed:
+                outcome = "wins"
+            elif scored < allowed:
+                outcome = "losses"
+            else:
+                outcome = "ties"
+            row[outcome] += 1
+            if game["div_game"]:
+                row[f"div_{outcome}"] += 1
+
+    return _finalize_standings(list(tally.values()))
+
+
+def _record(wins: int, losses: int, ties: int) -> str:
+    return f"{wins}-{losses}" + (f"-{ties}" if ties else "")
 
 
 def _finalize_standings(rows: list[dict]) -> list[dict]:
     by_team = {r["abbr"]: r for r in rows}
     for abbr in NFC_WEST:
-        by_team.setdefault(abbr, {"abbr": abbr, "wins": 0, "losses": 0, "ties": 0, "div": "0-0"})
+        by_team.setdefault(abbr, {"abbr": abbr, "wins": 0, "losses": 0, "ties": 0,
+                                  "div_wins": 0, "div_losses": 0, "div_ties": 0})
 
     def pct(r):
         games = r["wins"] + r["losses"] + r["ties"]
@@ -118,77 +200,48 @@ def _finalize_standings(rows: list[dict]) -> list[dict]:
     )
     leader = ordered[0]
     for row in ordered:
-        row["wl"] = f"{row['wins']}-{row['losses']}" + (f"-{row['ties']}" if row["ties"] else "")
+        row["wl"] = _record(row["wins"], row["losses"], row["ties"])
+        row["div"] = _record(row.get("div_wins", 0), row.get("div_losses", 0), row.get("div_ties", 0))
         gb = ((leader["wins"] - row["wins"]) + (row["losses"] - leader["losses"])) / 2.0
         row["gb"] = "—" if gb <= 0 else (str(int(gb)) if gb.is_integer() else f"{gb:.1f}")
     return ordered
 
 
-def fetch_standings(season: int) -> list[dict]:
-    if os.getenv("NFL_SAMPLE") == "1":
-        return _finalize_standings([
-            {"abbr": a, "wins": 0, "losses": 0, "ties": 0, "div": "0-0"} for a in NFC_WEST
-        ])
+def current_week(games: list[dict], now: datetime) -> int | None:
+    """The week to headline: the next one with a game left to play.
 
-    response = http_session().get(
-        ESPN_STANDINGS,
-        params={"season": season, "seasontype": 2},
-        timeout=20,
-    )
-    response.raise_for_status()
-
-    found = []
-    seen = set()
-    for entry in _standings_entries(response.json()):
-        abbr = (entry.get("team") or {}).get("abbreviation")
-        if abbr not in NFC_WEST or abbr in seen:
-            continue
-        seen.add(abbr)
-        found.append({
-            "abbr": abbr,
-            "wins": int(float(_stat(entry, ("wins", "w"), 0) or 0)),
-            "losses": int(float(_stat(entry, ("losses", "l"), 0) or 0)),
-            "ties": int(float(_stat(entry, ("ties", "t"), 0) or 0)),
-            "div": str(_stat(entry, ("divisionrecord", "div", "division"), "0-0")),
-        })
-    return _finalize_standings(found)
+    Judged across the whole league, not just the NFC West, so a week in which
+    all four clubs are on bye still reports its own number.
+    """
+    remaining = [g["week"] for g in games if g["dt"] >= now - IN_PROGRESS_GRACE]
+    if remaining:
+        return min(remaining)
+    return max((g["week"] for g in games), default=None)
 
 
-def sample_schedule():
-    return 1, [
-        {"away": "NE", "home": "SEA", "dt": datetime(2026, 9, 9, 17, 20, tzinfo=DISPLAY_TZ)},
-        {"away": "SF", "home": "LAR", "dt": datetime(2026, 9, 10, 17, 35, tzinfo=DISPLAY_TZ)},
-        {"away": "ARI", "home": "LAC", "dt": datetime(2026, 9, 13, 13, 25, tzinfo=DISPLAY_TZ)},
+def week_schedule(games: list[dict], week: int | None) -> list[dict]:
+    if week is None:
+        return []
+    division = set(NFC_WEST)
+    return [
+        g for g in games
+        if g["week"] == week and ({g["home"], g["away"]} & division)
     ]
 
 
-def fetch_week_schedule() -> tuple[int | None, list[dict]]:
-    if os.getenv("NFL_SAMPLE") == "1":
-        return sample_schedule()
-
-    response = http_session().get(ESPN_SCOREBOARD, params={"limit": 100}, timeout=20)
-    response.raise_for_status()
-    payload = response.json()
-    week = (payload.get("week") or {}).get("number")
-    games = []
-
-    for event in payload.get("events", []):
-        competition = (event.get("competitions") or [{}])[0]
-        competitors = competition.get("competitors") or []
-        by_side = {c.get("homeAway"): c for c in competitors}
-        home = ((by_side.get("home") or {}).get("team") or {}).get("abbreviation")
-        away = ((by_side.get("away") or {}).get("team") or {}).get("abbreviation")
-        if not home or not away or not ({home, away} & set(NFC_WEST)):
-            continue
-        try:
-            kickoff = datetime.fromisoformat(event["date"].replace("Z", "+00:00")).astimezone(DISPLAY_TZ)
-        except (KeyError, TypeError, ValueError):
-            continue
-        games.append({"away": away, "home": home, "dt": kickoff})
-
-    # One SF-LAR event should appear once, not once for each NFC West club.
-    unique = {(g["away"], g["home"], g["dt"].isoformat()): g for g in games}
-    return week, sorted(unique.values(), key=lambda g: g["dt"])
+def sample_season() -> tuple[list[dict], int]:
+    """Deterministic 2026 Week 1 stand-in for layout tests."""
+    games = [
+        {"week": 1, "game_type": "REG", "away": "NE", "home": "SEA",
+         "dt": datetime(2026, 9, 9, 17, 20, tzinfo=DISPLAY_TZ)},
+        {"week": 1, "game_type": "REG", "away": "SF", "home": "LAR",
+         "dt": datetime(2026, 9, 10, 17, 35, tzinfo=DISPLAY_TZ)},
+        {"week": 1, "game_type": "REG", "away": "ARI", "home": "LAC",
+         "dt": datetime(2026, 9, 13, 13, 25, tzinfo=DISPLAY_TZ)},
+    ]
+    for game in games:
+        game.update(home_score=None, away_score=None, played=False, div_game=False)
+    return games, 1
 
 
 def matchup_label(game: dict) -> str:
@@ -267,27 +320,27 @@ def render(standings: list[dict], week: int | None, games: list[dict], now: date
 
 def main():
     now = datetime.now(DISPLAY_TZ)
-    try:
-        standings = fetch_standings(now.year)
-    except Exception as exc:
-        print(f"WARNING: standings fetch failed: {exc}")
-        standings = _finalize_standings([
-            {"abbr": a, "wins": 0, "losses": 0, "ties": 0, "div": "0-0"} for a in NFC_WEST
-        ])
 
-    try:
-        week, games = fetch_week_schedule()
-    except Exception as exc:
-        print(f"WARNING: schedule fetch failed: {exc}")
-        week, games = None, []
+    if os.getenv("NFL_SAMPLE") == "1":
+        games, week = sample_season()
+    else:
+        try:
+            games = fetch_games(season_for(now))
+            week = current_week(games, now)
+        except Exception as exc:
+            print(f"WARNING: nflverse fetch failed: {exc}")
+            games, week = [], None
 
-    print(f"NFC West render {now:%Y-%m-%d %H:%M %Z}")
+    standings = compute_standings(games)
+    schedule = week_schedule(games, week)
+
+    print(f"NFC West render {now:%Y-%m-%d %H:%M %Z} — week {week or '—'}")
     for row in standings:
         print(f"  {row['abbr']:3s} {row['wl']:6s} DIV {row['div']:6s} GB {row['gb']}")
-    for game in games:
+    for game in schedule:
         print(f"  {matchup_label(game):12s} {game['dt']:%a %Y-%m-%d %-I:%M %p %Z}")
 
-    output = render(standings, week, games, now)
+    output = render(standings, week, schedule, now)
     OUT.parent.mkdir(parents=True, exist_ok=True)
     output.save(OUT, format="PNG", optimize=True)
     print(f"Wrote {OUT} ({output.size[0]}x{output.size[1]})")
