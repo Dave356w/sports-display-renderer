@@ -19,7 +19,7 @@ Output: `public/mlb_nl_west.png`
 
 ## NFL — NFC West
 
-`render_nfl.py` draws the approved white-background NFC West collectible directly with Pillow, then overlays:
+`render_nfl.py` composites the NFC West pennant artwork in `assets/nfl/` onto the white-background NFC West master, then overlays:
 
 - current Pacific date
 - live NFC West W-L record
@@ -28,6 +28,8 @@ Output: `public/mlb_nl_west.png`
 - the current week's unique NFC West matchups and Pacific kickoff times
 
 Standings and schedule data come from ESPN's keyless NFL JSON feeds. The renderer keeps the MLB implementation's 971x1619 master -> 480x800 E1002 downsample path.
+
+Artwork lives in `assets/nfl/`: `background.png` (971x1619 master) plus one 2172x724 pennant per club (`SF.png`, `SEA.png`, `LAR.png`, `ARI.png`).
 
 ![NFC West Standings](https://raw.githubusercontent.com/Dave356w/sports-display-renderer/main/public/nfl_nfc_west.png)
 
