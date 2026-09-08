@@ -1,0 +1,51 @@
+name: Render NFC West Display
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "render_nfl.py"
+      - ".github/workflows/render_nfl.yml"
+  schedule:
+    - cron: "*/30 * * * *"   # standings/schedule update every 30 minutes
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: render-nfc-west
+  cancel-in-progress: true
+
+jobs:
+  render:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install fonts
+        run: sudo apt-get update && sudo apt-get install -y fonts-lato fonts-dejavu-core
+
+      - name: Install Python dependencies
+        run: pip install -r requirements.txt
+
+      - name: Render NFC West display
+        run: python render_nfl.py
+
+      - name: Commit updated NFL render
+        run: |
+          git config user.name "sports-display-render-bot"
+          git config user.email "actions@github.com"
+          git add public/nfl_nfc_west.png
+          if ! git diff --cached --quiet; then
+            git commit -m "Update NFC West display $(date -u +%Y-%m-%dT%H:%MZ)"
+            git pull --rebase origin main
+            git push
+          else
+            echo "No NFL display change; skipping commit."
+          fi
