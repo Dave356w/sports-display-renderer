@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - "render_nfl.py"
+      - "assets/nfl/**"
       - ".github/workflows/render_nfl.yml"
   schedule:
     - cron: "*/30 * * * *"   # standings/schedule update every 30 minutes
