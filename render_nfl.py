@@ -101,9 +101,6 @@ def border(d):
   d.line((x,y+sy*30,x+sx*30,y),fill=NAVY,width=4); d.line((x+sx*10,y+sy*40,x+sx*40,y+sy*10),fill=NAVY,width=2)
 def header(d,now):
  d.text((486,111),'NFC WEST',font=F(SERIF,118),fill=NAVY,anchor='mm')
- mini=F(LATO_B,18)
- for i,s in enumerate(('NFL','NATIONAL','FOOTBALL','CONFERENCE')): d.text((54,92+i*27),s,font=mini,fill=NAVY)
- for i,s in enumerate(('WEST','DIVISION','STRENGTH','BUILDS','CHAMPIONS')): d.text((916,92+i*26),s,font=mini,fill=NAVY,anchor='ra')
  d.line((170,226,366,208),fill=RED,width=5); d.line((606,208,801,226),fill=RED,width=5)
  for x in (405,445,486,527,567): star(d,x,215,14)
  d.text((486,273),now.strftime('%B %-d, %Y').upper(),font=F(SERIF,39),fill=NAVY,anchor='mm')
