@@ -58,8 +58,17 @@ FONT_FALLBACK = "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"
 ROW_CENTERS = (458, 704, 950, 1196)
 STAT_X = (610, 744, 865)  # W-L, DIV, GB
 DATE_X, DATE_Y = 486, 273
-PENNANT_LEFT = 48
+# Where the pole's left edge lands once the transparent margin is trimmed off.
+# Set to the column SEA and LAR already hung from, so the two clubs that were
+# in line stay put and the two that were inset move out to meet them.
+PENNANT_POLE_X = 68
 PENNANT_MAX_SIZE = (487, 182)
+# ARI's artwork trails ~27px of alpha=1..8 haze past its pole — invisible on the
+# panel but enough to defeat a plain alpha>0 trim, which would leave that club
+# hanging alone to the right. Ignore anything at or below this when measuring
+# where a pennant starts; the poles themselves go opaque within a pixel, so the
+# exact floor is not delicate.
+PENNANT_ALPHA_FLOOR = 8
 
 # A game still counts as "this week" for a while after kickoff so the display
 # does not roll forward mid-afternoon while games are being played.
@@ -289,12 +298,28 @@ def status_label(game: dict) -> str:
 
 
 def load_pennant(abbr: str) -> Image.Image:
+    """The club's pennant, scaled to the row and trimmed to its own artwork.
+
+    The four source files carry the same 2172x724 canvas but pad the artwork
+    inside it differently — 86 to 159px of transparent margin on the left — so
+    compositing the raw canvases at a fixed x hung the poles up to 8px apart on
+    the panel. Trimming to the alpha bounding box makes the pole the image's
+    left edge, so every row hangs from the same column.
+
+    Scaling before the trim keeps one shared factor across the four clubs, so
+    the pennants keep their relative lengths instead of being stretched to a
+    uniform footprint.
+    """
     pennant_path = ASSETS / f"{abbr}.png"
     if not pennant_path.exists():
         raise FileNotFoundError(f"Missing NFL pennant artwork: {pennant_path}")
     pennant = Image.open(pennant_path).convert("RGBA")
     pennant.thumbnail(PENNANT_MAX_SIZE, Image.Resampling.LANCZOS)
-    return pennant
+    visible = pennant.getchannel("A").point(
+        lambda alpha: 255 if alpha > PENNANT_ALPHA_FLOOR else 0
+    )
+    bbox = visible.getbbox()
+    return pennant.crop(bbox) if bbox else pennant
 
 
 def render(standings: list[dict], week: int | None, games: list[dict], now: datetime) -> Image.Image:
@@ -320,7 +345,7 @@ def render(standings: list[dict], week: int | None, games: list[dict], now: date
         pennant = load_pennant(row['abbr'])
         cy = ROW_CENTERS[slot]
         py = int(cy - pennant.height / 2)
-        img.alpha_composite(pennant, (PENNANT_LEFT, py))
+        img.alpha_composite(pennant, (PENNANT_POLE_X, py))
         draw.text((STAT_X[0], cy), row["wl"], font=stat_font, fill=NAVY, anchor="mm")
         draw.text((STAT_X[1], cy), row["div"], font=stat_font, fill=NAVY, anchor="mm")
         draw.text((STAT_X[2], cy), row["gb"], font=stat_font, fill=NAVY, anchor="mm")
