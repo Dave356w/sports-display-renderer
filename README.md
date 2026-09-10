@@ -25,7 +25,7 @@ Output: `public/mlb_nl_west.png`
 - live NFC West W-L record
 - division record
 - games behind the division leader
-- the current week's unique NFC West matchups and Pacific kickoff times
+- the current week's unique NFC West matchups, each showing its Pacific kickoff time until the game is final and its score afterwards
 
 Schedule and result data come from [nflverse's `games.csv`](https://github.com/nflverse/nfldata), a keyless static file served off GitHub — no API key, quota, or user-agent gate. Standings are computed from completed regular-season games rather than read from a standings feed. The renderer keeps the MLB implementation's 971x1619 master -> 480x800 E1002 downsample path.
 
