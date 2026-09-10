@@ -30,7 +30,15 @@ jobs:
           python-version: "3.11"
 
       - name: Install fonts
-        run: sudo apt-get update && sudo apt-get install -y fonts-lato fonts-dejavu-core
+        run: |
+          # A failure in any single repo index fails `apt-get update` as a whole,
+          # including the Google Chrome repo the runner ships preconfigured and
+          # this job never uses: a hash-sum mismatch there took down the
+          # 2026-09-09 render. Refreshing is best-effort, and apt falls back to
+          # the image's existing indexes; the install is what has to succeed, and
+          # it still fails the job loudly if a font package cannot be had.
+          sudo apt-get update -o Acquire::Retries=3 || true
+          sudo apt-get install -y fonts-lato fonts-dejavu-core
 
       - name: Install Python dependencies
         run: pip install -r requirements.txt
