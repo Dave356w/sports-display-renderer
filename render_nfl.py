@@ -7,7 +7,8 @@ to the reTerminal E1002's native 480x800 portrait pixel grid.
 Static artwork lives in ``assets/nfl/``. Dynamic overlays are:
   * current Pacific date
   * NFC West W-L, division record, and games behind
-  * the current NFL week's NFC West matchups and Pacific kickoff times
+  * the current NFL week's NFC West matchups, showing the Pacific kickoff time
+    until a game is final and its score afterwards
 
 Schedules and results come from nflverse's ``games.csv``, a keyless static file
 served off GitHub. Standings are computed from completed regular-season games
@@ -230,31 +231,61 @@ def week_schedule(games: list[dict], week: int | None) -> list[dict]:
 
 
 def sample_season() -> tuple[list[dict], int]:
-    """Deterministic 2026 Week 1 stand-in for layout tests."""
+    """Deterministic 2026 Week 1 stand-in for layout tests.
+
+    The opener is final and the rest are upcoming, so one pass exercises both
+    the score line and the kickoff-time line.
+    """
     games = [
         {"week": 1, "game_type": "REG", "away": "NE", "home": "SEA",
-         "dt": datetime(2026, 9, 9, 17, 20, tzinfo=DISPLAY_TZ)},
+         "dt": datetime(2026, 9, 9, 17, 20, tzinfo=DISPLAY_TZ),
+         "home_score": 24, "away_score": 17, "played": True},
         {"week": 1, "game_type": "REG", "away": "SF", "home": "LAR",
          "dt": datetime(2026, 9, 10, 17, 35, tzinfo=DISPLAY_TZ)},
         {"week": 1, "game_type": "REG", "away": "ARI", "home": "LAC",
          "dt": datetime(2026, 9, 13, 13, 25, tzinfo=DISPLAY_TZ)},
     ]
     for game in games:
-        game.update(home_score=None, away_score=None, played=False, div_game=False)
+        game.setdefault("home_score", None)
+        game.setdefault("away_score", None)
+        game.setdefault("played", False)
+        game["div_game"] = False
     return games, 1
 
 
-def matchup_label(game: dict) -> str:
+def _ordered_sides(game: dict) -> tuple[tuple[str, int | None], tuple[str, int | None], str]:
+    """The two clubs in the order the matchup line prints them, plus the separator.
+
+    A division club hosting an outside opponent leads ("SEA vs NE"); every other
+    pairing, including division-on-division, reads away-first ("SF @ LAR").
+    Scores are carried alongside so the score line stays in the same left-to-right
+    order as the names above it.
+    """
     away, home = game["away"], game["home"]
-    if away in NFC_WEST and home in NFC_WEST:
-        return f"{away} @ {home}"
-    if home in NFC_WEST:
-        return f"{home} vs {away}"
-    return f"{away} @ {home}"
+    if home in NFC_WEST and away not in NFC_WEST:
+        return (home, game.get("home_score")), (away, game.get("away_score")), "vs"
+    return (away, game.get("away_score")), (home, game.get("home_score")), "@"
+
+
+def matchup_label(game: dict) -> str:
+    (first, _), (second, _), separator = _ordered_sides(game)
+    return f"{first} {separator} {second}"
+
+
+def score_label(game: dict) -> str:
+    (_, first), (_, second), _ = _ordered_sides(game)
+    return f"FINAL {first}-{second}"
 
 
 def time_label(dt: datetime) -> str:
     return dt.strftime("%a %-I:%M %p").upper()
+
+
+def status_label(game: dict) -> str:
+    """Final score once the game is in the books, otherwise the kickoff time."""
+    if game.get("played"):
+        return score_label(game)
+    return time_label(game["dt"])
 
 
 def load_pennant(abbr: str) -> Image.Image:
@@ -307,7 +338,7 @@ def render(standings: list[dict], week: int | None, games: list[dict], now: date
             name_size = 31 if len(games) <= 3 else 24
             time_size = 27 if len(games) <= 3 else 21
             draw.text((cx, 1442), matchup_label(game), font=load_font(FONT_HEAVY, name_size), fill=NAVY, anchor="mm")
-            draw.text((cx, 1492), time_label(game["dt"]), font=load_font(FONT_BOLD, time_size), fill=NAVY, anchor="mm")
+            draw.text((cx, 1492), status_label(game), font=load_font(FONT_BOLD, time_size), fill=NAVY, anchor="mm")
     else:
         draw.text((486, 1464), "SCHEDULE UNAVAILABLE", font=load_font(FONT_BOLD, 28), fill=NAVY, anchor="mm")
 
@@ -338,7 +369,8 @@ def main():
     for row in standings:
         print(f"  {row['abbr']:3s} {row['wl']:6s} DIV {row['div']:6s} GB {row['gb']}")
     for game in schedule:
-        print(f"  {matchup_label(game):12s} {game['dt']:%a %Y-%m-%d %-I:%M %p %Z}")
+        when = f"{game['dt']:%a %Y-%m-%d %-I:%M %p %Z}"
+        print(f"  {matchup_label(game):12s} {status_label(game):16s} {when}")
 
     output = render(standings, week, schedule, now)
     OUT.parent.mkdir(parents=True, exist_ok=True)
