@@ -1,2 +1,6 @@
 __pycache__/
 *.pyc
+
+# research backtest cache
+research/tb_divergence/.cache/
+.pytest_cache/

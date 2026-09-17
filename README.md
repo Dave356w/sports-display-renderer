@@ -66,3 +66,16 @@ The daily MLB matchup page, grading ledger, and vs-market scoreboard live in [ml
 The code in this repository is released under the [MIT License](LICENSE).
 
 Team artwork is intended for personal, non-commercial use only. MLB and NFL team names, marks, and related trademarks belong to their respective clubs and leagues.
+
+## Research — signal backtesting
+
+`research/tb_divergence/` holds an audit and walk-forward harness for the
+total-bases divergence signal (`Δ_60d − Δ_15d`). It is independent of the
+renderers and is not imported by them.
+
+```bash
+pip install -r requirements-research.txt
+cd research/tb_divergence && python -m pytest tests/ -q
+```
+
+See [`research/tb_divergence/README.md`](research/tb_divergence/README.md).

@@ -1,0 +1,6 @@
+# Backtesting deps for research/ only. The renderers use requirements.txt.
+pandas>=2.0
+numpy>=1.24
+scipy>=1.10
+requests>=2.31
+pytest>=7.4
