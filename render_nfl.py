@@ -27,9 +27,9 @@ from zoneinfo import ZoneInfo
 import requests
 from PIL import Image, ImageDraw, ImageFont
 from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
 
 from epaper import to_spectra6
-from urllib3.util.retry import Retry
 
 ROOT = Path(__file__).resolve().parent
 ASSETS = ROOT / "assets" / "nfl"
