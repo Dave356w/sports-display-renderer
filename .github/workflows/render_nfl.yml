@@ -5,6 +5,8 @@ on:
     branches: [main]
     paths:
       - "render_nfl.py"
+      - "epaper.py"
+      - "requirements.txt"
       - "assets/nfl/**"
       - ".github/workflows/render_nfl.yml"
   schedule:

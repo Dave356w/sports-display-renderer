@@ -23,6 +23,8 @@ from zoneinfo import ZoneInfo
 import requests
 from PIL import Image, ImageDraw, ImageFont
 
+from epaper import to_spectra6
+
 ROOT     = Path(__file__).resolve().parent
 ASSETS   = ROOT / "assets"
 PENNANTS = ASSETS / "pennants"
@@ -125,6 +127,9 @@ def main():
 
     img  = Image.open(bg_path).convert("RGBA")
     draw = ImageDraw.Draw(img)
+    # Pennant artwork is dithered onto the panel's six inks; everything else
+    # snaps to solid ink so type stays crisp.
+    artwork = Image.new("L", img.size, 0)
     stat_font = load_font(STAT_FONT_SIZE)
 
     draw_date(draw)
@@ -141,6 +146,7 @@ def main():
         # vertically center the pennant on the row's centerline
         py = team["center"] - ph // 2
         img.alpha_composite(pennant, (PENNANT_X, py))
+        artwork.paste(pennant.getchannel("A"), (PENNANT_X, py))
 
         draw.text((WL_X, team["center"]), team["wl"], font=stat_font, fill=NAVY, anchor="mm")
         draw.text((GB_X, team["center"]), team["gb"], font=stat_font, fill=NAVY, anchor="mm")
@@ -148,13 +154,16 @@ def main():
     if DEVICE_OUTPUT_SIZE:
         # Downsample to native panel resolution so the device paints pixels 1:1.
         img = img.resize(DEVICE_OUTPUT_SIZE, Image.LANCZOS)
+        artwork = artwork.resize(DEVICE_OUTPUT_SIZE, Image.BOX)
+
+    img = to_spectra6(img, dither_mask=artwork)
 
     if ROTATE_FOR_PORTRAIT_MOUNT:
         # NEAREST keeps pixels exact (no resampling) on the 90° transpose.
         img = img.rotate(ROTATE_ANGLE, expand=True, resample=Image.NEAREST)
 
     OUT.parent.mkdir(parents=True, exist_ok=True)
-    img.convert("RGB").save(OUT, quality=95)
+    img.save(OUT, optimize=True)
     print(f"Wrote {OUT}  ({img.size[0]}x{img.size[1]})")
 
 

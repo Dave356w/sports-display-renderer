@@ -27,6 +27,8 @@ from zoneinfo import ZoneInfo
 import requests
 from PIL import Image, ImageDraw, ImageFont
 from requests.adapters import HTTPAdapter
+
+from epaper import to_spectra6
 from urllib3.util.retry import Retry
 
 ROOT = Path(__file__).resolve().parent
@@ -328,6 +330,9 @@ def render(standings: list[dict], week: int | None, games: list[dict], now: date
         raise FileNotFoundError(f"Missing NFL background artwork: {background}")
     img = Image.open(background).convert("RGBA")
     draw = ImageDraw.Draw(img)
+    # Marks the pennant artwork, the only part of the frame that is dithered
+    # when it is reduced to the panel's six inks.
+    artwork = Image.new("L", img.size, 0)
 
     # The generated background includes placeholder date/footer text, so clear
     # those dynamic zones and redraw them with live values.
@@ -346,6 +351,7 @@ def render(standings: list[dict], week: int | None, games: list[dict], now: date
         cy = ROW_CENTERS[slot]
         py = int(cy - pennant.height / 2)
         img.alpha_composite(pennant, (PENNANT_POLE_X, py))
+        artwork.paste(pennant.getchannel("A"), (PENNANT_POLE_X, py))
         draw.text((STAT_X[0], cy), row["wl"], font=stat_font, fill=NAVY, anchor="mm")
         draw.text((STAT_X[1], cy), row["div"], font=stat_font, fill=NAVY, anchor="mm")
         draw.text((STAT_X[2], cy), row["gb"], font=stat_font, fill=NAVY, anchor="mm")
@@ -359,7 +365,7 @@ def render(standings: list[dict], week: int | None, games: list[dict], now: date
             cx = left + width * (i + 0.5)
             if i:
                 sx = int(left + width * i)
-                draw.line((sx, 1413, sx, 1510), fill=GREY, width=2)
+                draw.line((sx, 1413, sx, 1510), fill=GREY, width=3)
             name_size = 31 if len(games) <= 3 else 24
             time_size = 27 if len(games) <= 3 else 21
             draw.text((cx, 1442), matchup_label(game), font=load_font(FONT_HEAVY, name_size), fill=NAVY, anchor="mm")
@@ -371,7 +377,8 @@ def render(standings: list[dict], week: int | None, games: list[dict], now: date
     draw.text((83, 1565), f"WEEK {week or '—'}", font=load_font(FONT_BOLD, 17), fill=NAVY, anchor="lm")
 
     img = img.resize(DEVICE_OUTPUT_SIZE, Image.Resampling.LANCZOS)
-    return img.convert("RGB")
+    artwork = artwork.resize(DEVICE_OUTPUT_SIZE, Image.Resampling.BOX)
+    return to_spectra6(img, dither_mask=artwork)
 
 
 def main():

@@ -4,6 +4,8 @@ Renderer for the 7.3-inch reTerminal E1002 e-paper sports collectible display.
 
 The repository contains independent MLB and NFL renderers. Both compose at high resolution and then downsample to the panel's native 480x800 portrait pixel grid.
 
+Both then reduce the frame to the panel's six E Ink Spectra 6 inks (black, white, red, yellow, blue, green) in `epaper.py`, so the firmware doesn't have to dither it. Text, rules and other flat art snap to one solid ink per pixel and stay crisp. Only the pennant artwork is dithered, against an approximation of how the inks look on the glass. The PNG holds only pure ink values, so the device shows it pixel-for-pixel.
+
 ## MLB — NL West
 
 `render.py` composites the existing NL West pennant artwork onto the MLB master and overlays the current date plus live W-L / GB standings from MLB StatsAPI.
