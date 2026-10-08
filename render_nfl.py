@@ -489,13 +489,13 @@ def main():
         when = f"{game['dt']:%a %Y-%m-%d %-I:%M %p %Z}"
         print(f"  {matchup_label(game):12s} {status_label(game):16s} {when}")
 
-    output = render(standings, week, schedule, now)
+    output = render(standings, week, schedule, now, pennant_style="text")
     OUT.parent.mkdir(parents=True, exist_ok=True)
     output.save(OUT, format="PNG", optimize=True)
     print(f"Wrote {OUT} ({output.size[0]}x{output.size[1]})")
-    # Keep the text-only exploration current using the exact same data snapshot.
+    # Retain the exploration URL as an identical alias for existing clients.
     text_out = OUT.with_name("nfl_nfc_west_text.png")
-    render(standings, week, schedule, now, pennant_style="text").save(text_out, format="PNG", optimize=True)
+    output.save(text_out, format="PNG", optimize=True)
     print(f"Wrote {text_out}")
 
 
