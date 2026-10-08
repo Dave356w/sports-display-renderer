@@ -3,7 +3,7 @@
 This is the NFL companion to ``render.py``. Artwork is scaled first, then
 type and rules are drawn on the E1002's native 480x800 portrait pixel grid.
 Updated artwork uses the panel's six nominal colors, without dithering.
-The original weekly-games footer retains its existing rendering.
+The weekly-games footer keeps its original box, flattened the same way.
 
 Static artwork lives in ``assets/nfl/``. Dynamic overlays are:
   * current Pacific date
@@ -66,6 +66,8 @@ ROW_CENTERS = (230, 350, 470, 590)
 STAT_X = (302, 370, 431)  # W-L, DIV, GB
 STAT_WIDTHS = (68, 62, 44)
 DATE_X, DATE_Y = 240, 145
+# The master's This Week box and tagline, without its outer border.
+FOOTER_BOX = (22, 653, 458, 785)
 # Where the pole's left edge lands once the transparent margin is trimmed off.
 # Set to the column SEA and LAR already hung from, so the two clubs that were
 # in line stay put and the two that were inset move out to meet them.
@@ -393,35 +395,45 @@ def fitted_font(text: str, path: str, size: int, width: int, minimum: int = 14):
     raise ValueError(f"Label does not fit in {width}px at {minimum}px: {text!r}")
 
 
-def render_week_footer(week: int | None, games: list[dict]) -> Image.Image:
-    """Preserve the original This Week artwork, columns, typography and colors."""
-    img = Image.open(ASSETS / "background.png").convert("RGBA")
+def render_week_footer(img: Image.Image, week: int | None, games: list[dict]) -> None:
+    """Draw the This Week box and tagline in the same solid inks as the rest.
+
+    The box, its title and the tagline come from the master artwork, flattened
+    like the masthead. Only the box is taken, not the master's own outer
+    border, so the single frame drawn by `render` runs unbroken top to bottom.
+    """
+    with Image.open(ASSETS / "background.png") as master:
+        art = master.convert("RGB").resize(DEVICE_OUTPUT_SIZE, Image.Resampling.LANCZOS)
+    img.paste(panel_artwork(art.crop(FOOTER_BOX), title=True), FOOTER_BOX[:2])
+
     draw = ImageDraw.Draw(img)
-    NAVY = (4, 43, 78)
-    GREY = (118, 135, 148)
-    FONT_HEAVY = "/usr/share/fonts/truetype/lato/Lato-Heavy.ttf"
-    FONT_BOLD = "/usr/share/fonts/truetype/lato/Lato-Bold.ttf"
-    # Variable-width weekly schedule columns: normally 3 or 4 unique games.
-    if games:
-        games = games[:4]
-        left, right = 74, 897
-        width = (right - left) / len(games)
-        for i, game in enumerate(games):
-            cx = left + width * (i + 0.5)
-            if i:
-                sx = int(left + width * i)
-                draw.line((sx, 1413, sx, 1510), fill=GREY, width=2)
-            name_size = 31 if len(games) <= 3 else 24
-            time_size = 27 if len(games) <= 3 else 21
-            draw.text((cx, 1442), matchup_label(game), font=load_font(FONT_HEAVY, name_size), fill=NAVY, anchor="mm")
-            draw.text((cx, 1492), status_label(game), font=load_font(FONT_BOLD, time_size), fill=NAVY, anchor="mm")
-    else:
-        draw.text((486, 1464), "SCHEDULE UNAVAILABLE", font=load_font(FONT_BOLD, 28), fill=NAVY, anchor="mm")
+    draw.fontmode = "1"
+    # Blank the master's placeholder week label, its tagline (too fine to
+    # survive flattening) and the scraps of its corner ornaments, then redraw.
+    for box in ((22, 762, 120, 785), (330, 762, 458, 785)):
+        draw.rectangle(box, fill=WHITE)
+    tag_font = load_font(FONT_BOLD, 9)
+    draw.text((41, 775), f"WEEK {week or '—'}", font=tag_font, fill=BLACK, anchor="lm")
+    draw.text((439, 775), "FOOTBALL LIVES HERE", font=tag_font, fill=BLACK, anchor="rm")
 
-    draw.rectangle((68, 1547, 160, 1584), fill=(255, 255, 255, 255))
-    draw.text((83, 1565), f"WEEK {week or '—'}", font=load_font(FONT_BOLD, 17), fill=NAVY, anchor="lm")
-
-    return img.resize(DEVICE_OUTPUT_SIZE, Image.Resampling.LANCZOS).convert("RGB").crop((0, 645, 480, 800))
+    if not games:
+        draw.text((240, 724), "SCHEDULE UNAVAILABLE", font=load_font(FONT_BOLD, 14), fill=BLACK, anchor="mm")
+        return
+    games = games[:4]
+    left, right = 37, 443
+    width = (right - left) / len(games)
+    name_size, time_size = (15, 13) if len(games) <= 3 else (12, 11)
+    for i, game in enumerate(games):
+        cx = left + width * (i + 0.5)
+        if i:
+            sx = int(left + width * i)
+            for y in range(699, 749, 3):  # dotted column rule
+                draw.point((sx, y), fill=BLACK)
+        name, status = matchup_label(game), status_label(game)
+        draw.text((cx, 712), name, font=fitted_font(name, FONT_HEAVY, name_size, int(width) - 8, 9),
+                  fill=BLACK, anchor="mm")
+        draw.text((cx, 737), status, font=fitted_font(status, FONT_BOLD, time_size, int(width) - 8, 8),
+                  fill=BLACK, anchor="mm")
 
 
 def render(standings: list[dict], week: int | None, games: list[dict], now: datetime,
@@ -437,11 +449,6 @@ def render(standings: list[dict], week: int | None, games: list[dict], now: date
         img.paste(panel_artwork(title.crop((32, 16, 448, 125)), title=True), (32, 16))
     draw = ImageDraw.Draw(img)
     draw.fontmode = "1"  # hard black/white glyph edges, no gray antialias pixels
-    draw.rectangle((12, 12, 467, 787), outline=BLACK, width=2)
-    for x in (20, 459):
-        for y in (20, 779):
-            draw.rectangle((x - 2, y - 2, x + 2, y + 2), fill=RED)
-
     date = now.strftime("%B %-d, %Y").upper()
     draw.text((DATE_X, DATE_Y), date,
               font=fitted_font(date, FONT_SERIF, 20, 420), fill=BLACK, anchor="mm")
@@ -460,8 +467,13 @@ def render(standings: list[dict], week: int | None, games: list[dict], now: date
                       fill=BLACK, anchor="mm")
         draw.line((26, cy + 54, 454, cy + 54), fill=BLACK, width=1)
 
-    # The weekly games section is intentionally unchanged from the original.
-    img.paste(render_week_footer(week, games), (0, 645))
+    render_week_footer(img, week, games)
+
+    # One continuous frame, drawn last so nothing pasted above can break it.
+    draw.rectangle((12, 12, 467, 787), outline=BLACK, width=2)
+    for x in (20, 459):
+        for y in (20, 779):
+            draw.rectangle((x - 2, y - 2, x + 2, y + 2), fill=RED)
     return img
 
 
