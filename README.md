@@ -27,7 +27,7 @@ Output: `public/mlb_nl_west.png`
 - games behind the division leader
 - the current week's unique NFC West matchups, each showing its Pacific kickoff time until the game is final and its score afterwards
 
-Schedule and result data come from [nflverse's `games.csv`](https://github.com/nflverse/nfldata), a keyless static file served off GitHub — no API key, quota, or user-agent gate. Standings are computed from completed regular-season games rather than read from a standings feed. The NFL renderer scales the artwork first, then draws solid black text and pixel-aligned rules at the final 480x800 resolution. The weekly schedule uses a two-column grid with 18px matchup text and 16px status text (fitting down to 16/15px only if required).
+Schedule and result data come from [nflverse's `games.csv`](https://github.com/nflverse/nfldata), a keyless static file served off GitHub — no API key, quota, or user-agent gate. Standings are computed from completed regular-season games rather than read from a standings feed. The NFL renderer scales the artwork first, then draws solid black text and pixel-aligned rules at the final 480x800 resolution. The original This Week section retains its artwork, single-row game columns, font sizes, colors, and live schedule/result behavior.
 
 Clubs tied on winning percentage are ordered by a fixed NFC West fallback, not the NFL's full tiebreaker sequence.
 
@@ -35,10 +35,10 @@ Artwork lives in `assets/nfl/`: `background.png` (971x1619 master) plus one 2172
 
 ### E1002 artwork treatment
 
-- Exact 480x800 portrait RGB PNG; no final resizing of text, no dithering.
-- Six nominal encoding colors only: black, white, red, green, blue, yellow. These are not measured physical ink colors. Dark team blues/reds are mapped by hue so a nearest-RGB conversion does not erase the pennants into black.
+- Exact 480x800 portrait RGB PNG; standings text is drawn at native resolution without dithering. The weekly-games footer keeps its original rendering.
+- Updated artwork uses six nominal encoding colors: black, white, red, green, blue, yellow. These are not measured physical ink colors. Dark team blues/reds are mapped by hue so a nearest-RGB conversion does not erase the pennants into black.
 - White background, solid black numbers, 1–2px rules and a 12px outer margin.
-- A two-column schedule keeps four games readable; long/tied standings records fit their own column without overlapping.
+- Long/tied standings records fit their own column without overlapping. The This Week layout is unchanged.
 - Two outputs share one data snapshot: `public/nfl_nfc_west.png` (illustrated) and `public/nfl_nfc_west_text.png` (text-only exploration). The existing page keeps the illustrated version as its default.
 
 Display the PNG at 1:1 resolution. In the device/content software, avoid additional smoothing, resizing, or dithering where configurable. If firmware expects a landscape 800x480 buffer, rotate the portrait image by 90 degrees without resampling rather than stretching it. Actual contrast and colors still need a check on the physical screen.

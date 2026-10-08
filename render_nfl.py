@@ -2,7 +2,8 @@
 
 This is the NFL companion to ``render.py``. Artwork is scaled first, then
 type and rules are drawn on the E1002's native 480x800 portrait pixel grid.
-The RGB PNG contains only the panel's six nominal colors, without dithering.
+Updated artwork uses the panel's six nominal colors, without dithering.
+The original weekly-games footer retains its existing rendering.
 
 Static artwork lives in ``assets/nfl/``. Dynamic overlays are:
   * current Pacific date
@@ -61,7 +62,7 @@ FONT_SERIF = "/usr/share/fonts/truetype/dejavu/DejaVuSerif-Bold.ttf"
 FONT_FALLBACK = "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"
 
 # All layout measurements below are final device pixels.
-ROW_CENTERS = (230, 338, 446, 554)
+ROW_CENTERS = (230, 350, 470, 590)
 STAT_X = (302, 370, 431)  # W-L, DIV, GB
 STAT_WIDTHS = (68, 62, 44)
 DATE_X, DATE_Y = 240, 145
@@ -392,6 +393,37 @@ def fitted_font(text: str, path: str, size: int, width: int, minimum: int = 14):
     raise ValueError(f"Label does not fit in {width}px at {minimum}px: {text!r}")
 
 
+def render_week_footer(week: int | None, games: list[dict]) -> Image.Image:
+    """Preserve the original This Week artwork, columns, typography and colors."""
+    img = Image.open(ASSETS / "background.png").convert("RGBA")
+    draw = ImageDraw.Draw(img)
+    NAVY = (4, 43, 78)
+    GREY = (118, 135, 148)
+    FONT_HEAVY = "/usr/share/fonts/truetype/lato/Lato-Heavy.ttf"
+    FONT_BOLD = "/usr/share/fonts/truetype/lato/Lato-Bold.ttf"
+    # Variable-width weekly schedule columns: normally 3 or 4 unique games.
+    if games:
+        games = games[:4]
+        left, right = 74, 897
+        width = (right - left) / len(games)
+        for i, game in enumerate(games):
+            cx = left + width * (i + 0.5)
+            if i:
+                sx = int(left + width * i)
+                draw.line((sx, 1413, sx, 1510), fill=GREY, width=2)
+            name_size = 31 if len(games) <= 3 else 24
+            time_size = 27 if len(games) <= 3 else 21
+            draw.text((cx, 1442), matchup_label(game), font=load_font(FONT_HEAVY, name_size), fill=NAVY, anchor="mm")
+            draw.text((cx, 1492), status_label(game), font=load_font(FONT_BOLD, time_size), fill=NAVY, anchor="mm")
+    else:
+        draw.text((486, 1464), "SCHEDULE UNAVAILABLE", font=load_font(FONT_BOLD, 28), fill=NAVY, anchor="mm")
+
+    draw.rectangle((68, 1547, 160, 1584), fill=(255, 255, 255, 255))
+    draw.text((83, 1565), f"WEEK {week or '—'}", font=load_font(FONT_BOLD, 17), fill=NAVY, anchor="lm")
+
+    return img.resize(DEVICE_OUTPUT_SIZE, Image.Resampling.LANCZOS).convert("RGB").crop((0, 645, 480, 800))
+
+
 def render(standings: list[dict], week: int | None, games: list[dict], now: datetime,
            pennant_style: str = "illustrated") -> Image.Image:
     background = ASSETS / "background.png"
@@ -428,32 +460,8 @@ def render(standings: list[dict], week: int | None, games: list[dict], now: date
                       fill=BLACK, anchor="mm")
         draw.line((26, cy + 54, 454, cy + 54), fill=BLACK, width=1)
 
-    # A 2x2 grid guarantees the same readable type size for up to four games.
-    # Scores stay in the same left-to-right order as the matchup names.
-    draw.rectangle((25, 621, 454, 763), outline=BLACK, width=2)
-    draw.text((240, 637), "THIS WEEK", font=load_font(FONT_SERIF, 20), fill=BLACK, anchor="mm")
-    draw.line((38, 637, 143, 637), fill=RED, width=2)
-    draw.line((337, 637, 441, 637), fill=RED, width=2)
-    if games:
-        visible_games = games[:4]
-        two_rows = len(visible_games) > 2
-        draw.line((240, 655, 240, 754), fill=BLACK, width=1)
-        if two_rows:
-            draw.line((36, 705, 443, 705), fill=BLACK, width=1)
-        for i, game in enumerate(visible_games):
-            cx = 132 if i % 2 == 0 else 348
-            cy = (670 + (i // 2) * 51) if two_rows else 688
-            name, status = matchup_label(game), status_label(game)
-            draw.text((cx, cy), name,
-                      font=fitted_font(name, FONT_HEAVY, 18, 192, minimum=16), fill=BLACK, anchor="mm")
-            draw.text((cx, cy + 21), status,
-                      font=fitted_font(status, FONT_BOLD, 16, 192, minimum=15), fill=BLACK, anchor="mm")
-    else:
-        draw.text((240, 704), "NO GAMES THIS WEEK" if week is not None else "SCHEDULE UNAVAILABLE",
-                  font=load_font(FONT_BOLD, 17), fill=BLACK, anchor="mm")
-
-    draw.text((28, 777), f"WEEK {week or '—'}", font=load_font(FONT_BOLD, 12), fill=BLACK, anchor="lm")
-    draw.text((452, 777), "TIMES PT", font=load_font(FONT_BOLD, 12), fill=BLACK, anchor="rm")
+    # The weekly games section is intentionally unchanged from the original.
+    img.paste(render_week_footer(week, games), (0, 645))
     return img
 
 
