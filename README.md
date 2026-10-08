@@ -39,7 +39,7 @@ Artwork lives in `assets/nfl/`: `background.png` (971x1619 master) plus one 2172
 - Updated artwork uses six nominal encoding colors: black, white, red, green, blue, yellow. These are not measured physical ink colors. Dark team blues/reds are mapped by hue so a nearest-RGB conversion does not erase the pennants into black.
 - White background, solid black numbers, 1–2px rules and a 12px outer margin.
 - Long/tied standings records fit their own column without overlapping. The This Week layout is unchanged.
-- Two outputs share one data snapshot: `public/nfl_nfc_west.png` (illustrated) and `public/nfl_nfc_west_text.png` (text-only exploration). The existing page keeps the illustrated version as its default.
+- The styled text-only pennants are the default at `public/nfl_nfc_west.png`, so existing display configurations use the new artwork. `public/nfl_nfc_west_text.png` remains an identical alias. The original illustrated assets remain available in `assets/nfl/`.
 
 Display the PNG at 1:1 resolution. In the device/content software, avoid additional smoothing, resizing, or dithering where configurable. If firmware expects a landscape 800x480 buffer, rotate the portrait image by 90 degrees without resampling rather than stretching it. Actual contrast and colors still need a check on the physical screen.
 
