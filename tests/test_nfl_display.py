@@ -24,6 +24,16 @@ class DisplayTests(unittest.TestCase):
                     # The 12px physical-frame margin must remain blank.
                     self.assertEqual(set(img.crop((0, 0, 480, 12)).getdata()), {nfl.WHITE})
 
+    def test_footer_title_is_crisp_monochrome_and_keeps_vintage_rules(self):
+        img = nfl.render(self.rows, self.week, self.games, self.now, "text")
+        crop = img.crop(nfl.TITLE_BOX)
+        colors = set(crop.getdata())
+        self.assertTrue(colors.issubset({nfl.BLACK, nfl.WHITE}))
+        self.assertGreater(list(crop.getdata()).count(nfl.BLACK), 250)
+        # The horizontal red accents must remain untouched beside the title.
+        self.assertEqual(img.getpixel((100, 676)), nfl.RED)
+        self.assertEqual(img.getpixel((380, 676)), nfl.RED)
+
     def test_late_season_records_fit_stat_columns(self):
         for row in self.rows:
             row.update(wl="10-6-1", div="3-2-1", gb="16.5")
