@@ -331,7 +331,8 @@ def load_pennant(abbr: str, style: str = "illustrated") -> Image.Image:
         }
         with Image.open(ASSETS / "text-only-pennants.png") as sheet:
             pennant = sheet.crop(boxes[abbr]).convert("RGBA")
-        pennant.thumbnail(PENNANT_MAX_SIZE, Image.Resampling.LANCZOS)
+        # BOX area sampling avoids edge ringing without redrawing the vintage lettering.
+        pennant.thumbnail(PENNANT_MAX_SIZE, Image.Resampling.BOX)
         return pennant
     if style != "illustrated":
         raise ValueError(f"Unknown pennant style: {style}")
@@ -464,15 +465,16 @@ def render(standings: list[dict], week: int | None, games: list[dict], now: date
     # Retain the original vintage masthead; draw structural artwork directly at
     # native size so one-pixel rules and small glyphs are never downsampled.
     with Image.open(background) as master:
-        title = master.convert("RGB").resize(DEVICE_OUTPUT_SIZE, Image.Resampling.LANCZOS)
+        # The supplied illustrated masthead is retained; BOX suppresses resize halos.
+        title = master.convert("RGB").resize(DEVICE_OUTPUT_SIZE, Image.Resampling.BOX)
         img.paste(panel_artwork(title.crop((32, 16, 448, 125)), title=True), (32, 16))
     draw = ImageDraw.Draw(img)
-    draw.fontmode = "1"  # hard black/white glyph edges, no gray antialias pixels
+    # Rasterize glyph masks at native resolution; retain the original typefaces.
     date = now.strftime("%B %-d, %Y").upper()
-    draw.text((DATE_X, DATE_Y), date,
-              font=fitted_font(date, FONT_SERIF, 20, 420), fill=BLACK, anchor="mm")
+    draw_crisp_text(img, (DATE_X, DATE_Y), date,
+                    fitted_font(date, FONT_SERIF, 20, 420))
     for x, label in zip(STAT_X, ("W-L", "DIV", "GB")):
-        draw.text((x, 171), label, font=load_font(FONT_HEAVY, 16), fill=BLACK, anchor="mm")
+        draw_crisp_text(img, (x, 171), label, load_font(FONT_HEAVY, 16))
     draw.line((26, 184, 454, 184), fill=BLACK, width=2)
 
     for slot, row in enumerate(standings[:4]):
@@ -481,9 +483,8 @@ def render(standings: list[dict], week: int | None, games: list[dict], now: date
         img.paste(pennant, (PENNANT_POLE_X, cy - pennant.height // 2))
         for x, width, key in zip(STAT_X, STAT_WIDTHS, ("wl", "div", "gb")):
             value = row[key]
-            draw.text((x, cy), value,
-                      font=fitted_font(value, FONT_HEAVY, 28, width, minimum=16),
-                      fill=BLACK, anchor="mm")
+            draw_crisp_text(img, (x, cy), value,
+                            fitted_font(value, FONT_HEAVY, 28, width, minimum=16))
         draw.line((26, cy + 54, 454, cy + 54), fill=BLACK, width=1)
 
     render_week_footer(img, week, games)
