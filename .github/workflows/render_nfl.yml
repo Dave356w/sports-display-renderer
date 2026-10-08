@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - "render_nfl.py"
+      - "tests/test_nfl_display.py"
       - "assets/nfl/**"
       - ".github/workflows/render_nfl.yml"
   schedule:
@@ -44,13 +45,15 @@ jobs:
         run: pip install -r requirements.txt
 
       - name: Render NFC West display
-        run: python render_nfl.py
+        run: |
+          python -m unittest discover -s tests -v
+          python render_nfl.py
 
       - name: Commit updated NFL render
         run: |
           git config user.name "sports-display-render-bot"
           git config user.email "actions@github.com"
-          git add public/nfl_nfc_west.png
+          git add public/nfl_nfc_west.png public/nfl_nfc_west_text.png
           if ! git diff --cached --quiet; then
             git commit -m "Update NFC West display $(date -u +%Y-%m-%dT%H:%MZ)"
             git pull --rebase origin main

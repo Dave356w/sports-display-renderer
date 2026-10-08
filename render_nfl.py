@@ -1,8 +1,8 @@
 """Render the 7.3-inch e-paper NFC West standings collectible.
 
-This is the NFL companion to ``render.py``. It follows the same device path:
-compose at the 971x1619 artwork resolution, overlay live data, then downsample
-to the reTerminal E1002's native 480x800 portrait pixel grid.
+This is the NFL companion to ``render.py``. Artwork is scaled first, then
+type and rules are drawn on the E1002's native 480x800 portrait pixel grid.
+The RGB PNG contains only the panel's six nominal colors, without dithering.
 
 Static artwork lives in ``assets/nfl/``. Dynamic overlays are:
   * current Pacific date
@@ -18,6 +18,7 @@ deterministic 2026 Week 1 layout test.
 from __future__ import annotations
 
 import csv
+import colorsys
 import io
 import os
 from datetime import datetime, timedelta
@@ -47,22 +48,28 @@ TIE_ORDER = {abbr: i for i, abbr in enumerate(NFC_WEST)}
 # nflverse abbreviates the Rams "LA"; the artwork and layout use "LAR".
 TEAM_ALIASES = {"LA": "LAR"}
 
-NAVY = (4, 43, 78)
-GREY = (118, 135, 148)
-FONT_HEAVY = "/usr/share/fonts/truetype/lato/Lato-Heavy.ttf"
-FONT_BOLD = "/usr/share/fonts/truetype/lato/Lato-Bold.ttf"
-FONT_SERIF = "/usr/share/fonts/truetype/dejavu/DejaVuSerifCondensed-Bold.ttf"
+BLACK = (0, 0, 0)
+WHITE = (255, 255, 255)
+RED = (255, 0, 0)
+GREEN = (0, 255, 0)
+BLUE = (0, 0, 255)
+YELLOW = (255, 255, 0)
+PANEL_COLORS = (BLACK, WHITE, RED, GREEN, BLUE, YELLOW)
+FONT_HEAVY = "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"
+FONT_BOLD = FONT_HEAVY
+FONT_SERIF = "/usr/share/fonts/truetype/dejavu/DejaVuSerif-Bold.ttf"
 FONT_FALLBACK = "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"
 
-# Calibrated against the 971x1619 white-background NFC West master.
-ROW_CENTERS = (458, 704, 950, 1196)
-STAT_X = (610, 744, 865)  # W-L, DIV, GB
-DATE_X, DATE_Y = 486, 273
+# All layout measurements below are final device pixels.
+ROW_CENTERS = (230, 338, 446, 554)
+STAT_X = (302, 370, 431)  # W-L, DIV, GB
+STAT_WIDTHS = (68, 62, 44)
+DATE_X, DATE_Y = 240, 145
 # Where the pole's left edge lands once the transparent margin is trimmed off.
 # Set to the column SEA and LAR already hung from, so the two clubs that were
 # in line stay put and the two that were inset move out to meet them.
-PENNANT_POLE_X = 68
-PENNANT_MAX_SIZE = (487, 182)
+PENNANT_POLE_X = 28
+PENNANT_MAX_SIZE = (236, 91)
 # ARI's artwork trails ~27px of alpha=1..8 haze past its pole — invisible on the
 # panel but enough to defeat a plain alpha>0 trim, which would leave that club
 # hanging alone to the right. Ignore anything at or below this when measuring
@@ -297,7 +304,7 @@ def status_label(game: dict) -> str:
     return time_label(game["dt"])
 
 
-def load_pennant(abbr: str) -> Image.Image:
+def load_pennant(abbr: str, style: str = "illustrated") -> Image.Image:
     """The club's pennant, scaled to the row and trimmed to its own artwork.
 
     The four source files carry the same 2172x724 canvas but pad the artwork
@@ -310,6 +317,21 @@ def load_pennant(abbr: str) -> Image.Image:
     the pennants keep their relative lengths instead of being stretched to a
     uniform footprint.
     """
+    if style == "text":
+        # Regions in the generated exploration sheet. Kept as a separate asset
+        # so the original illustrated pennants remain available unchanged.
+        boxes = {
+            "SF": (23, 30, 1067, 419),
+            "SEA": (23, 436, 1067, 780),
+            "LAR": (23, 794, 1067, 1111),
+            "ARI": (23, 1122, 1067, 1420),
+        }
+        with Image.open(ASSETS / "text-only-pennants.png") as sheet:
+            pennant = sheet.crop(boxes[abbr]).convert("RGBA")
+        pennant.thumbnail(PENNANT_MAX_SIZE, Image.Resampling.LANCZOS)
+        return pennant
+    if style != "illustrated":
+        raise ValueError(f"Unknown pennant style: {style}")
     pennant_path = ASSETS / f"{abbr}.png"
     if not pennant_path.exists():
         raise FileNotFoundError(f"Missing NFL pennant artwork: {pennant_path}")
@@ -322,62 +344,124 @@ def load_pennant(abbr: str) -> Image.Image:
     return pennant.crop(bbox) if bbox else pennant
 
 
-def render(standings: list[dict], week: int | None, games: list[dict], now: datetime) -> Image.Image:
+def panel_artwork(source: Image.Image, *, title: bool = False) -> Image.Image:
+    """Flatten artwork to six nominal RGB primaries, with no error diffusion.
+
+    Hue mapping deliberately preserves navy as blue and burgundy as red in
+    pennants: nearest-RGB quantization would collapse both to black. The title
+    uses black instead of navy. Whites/neutral shadows are thresholded, avoiding
+    the gray or cream pixels that a downstream converter can turn into speckles.
+    These are encoding colors, not a claim of measured physical ink appearance.
+    """
+    rgba = source.convert("RGBA")
+    flat = Image.new("RGBA", rgba.size, WHITE + (255,))
+    flat.alpha_composite(rgba)
+    rgb = flat.convert("RGB")
+    mapping = {}
+    for color in set(rgb.getdata()):
+        r, g, b = color
+        hue, saturation, value = colorsys.rgb_to_hsv(r / 255, g / 255, b / 255)
+        if value < 0.18:
+            ink = BLACK
+        elif saturation < 0.24:
+            ink = WHITE if value >= 0.60 else BLACK
+        elif min(color) >= 175:
+            ink = WHITE
+        elif hue < 0.095 or hue >= 0.92:
+            ink = RED
+        elif title:
+            ink = BLACK
+        elif hue < 0.19:
+            ink = YELLOW
+        elif hue < 0.48:
+            ink = GREEN
+        else:
+            ink = BLUE
+        mapping[color] = ink
+    rgb.putdata([mapping[color] for color in rgb.getdata()])
+    return rgb
+
+
+def fitted_font(text: str, path: str, size: int, width: int, minimum: int = 14):
+    """Fit a complete label, including late-season/tied records, to its cell."""
+    for candidate in range(size, minimum - 1, -1):
+        font = load_font(path, candidate)
+        left, _, right, _ = font.getbbox(text)
+        if max(right - left, font.getlength(text)) <= width:
+            return font
+    raise ValueError(f"Label does not fit in {width}px at {minimum}px: {text!r}")
+
+
+def render(standings: list[dict], week: int | None, games: list[dict], now: datetime,
+           pennant_style: str = "illustrated") -> Image.Image:
     background = ASSETS / "background.png"
     if not background.exists():
         raise FileNotFoundError(f"Missing NFL background artwork: {background}")
-    img = Image.open(background).convert("RGBA")
+    img = Image.new("RGB", DEVICE_OUTPUT_SIZE, WHITE)
+    # Retain the original vintage masthead; draw structural artwork directly at
+    # native size so one-pixel rules and small glyphs are never downsampled.
+    with Image.open(background) as master:
+        title = master.convert("RGB").resize(DEVICE_OUTPUT_SIZE, Image.Resampling.LANCZOS)
+        img.paste(panel_artwork(title.crop((32, 16, 448, 125)), title=True), (32, 16))
     draw = ImageDraw.Draw(img)
+    draw.fontmode = "1"  # hard black/white glyph edges, no gray antialias pixels
+    draw.rectangle((12, 12, 467, 787), outline=BLACK, width=2)
+    for x in (20, 459):
+        for y in (20, 779):
+            draw.rectangle((x - 2, y - 2, x + 2, y + 2), fill=RED)
 
-    # The generated background includes placeholder date/footer text, so clear
-    # those dynamic zones and redraw them with live values.
-    draw.rectangle((275, 230, 697, 303), fill=(255, 255, 255, 255))
-    draw.text(
-        (DATE_X, DATE_Y),
-        now.strftime("%B %-d, %Y").upper(),
-        font=load_font(FONT_SERIF, 39),
-        fill=NAVY,
-        anchor="mm",
-    )
+    date = now.strftime("%B %-d, %Y").upper()
+    draw.text((DATE_X, DATE_Y), date,
+              font=fitted_font(date, FONT_SERIF, 20, 420), fill=BLACK, anchor="mm")
+    for x, label in zip(STAT_X, ("W-L", "DIV", "GB")):
+        draw.text((x, 171), label, font=load_font(FONT_HEAVY, 16), fill=BLACK, anchor="mm")
+    draw.line((26, 184, 454, 184), fill=BLACK, width=2)
 
-    stat_font = load_font(FONT_SERIF, 51)
     for slot, row in enumerate(standings[:4]):
-        pennant = load_pennant(row['abbr'])
+        pennant = panel_artwork(load_pennant(row["abbr"], pennant_style))
         cy = ROW_CENTERS[slot]
-        py = int(cy - pennant.height / 2)
-        img.alpha_composite(pennant, (PENNANT_POLE_X, py))
-        draw.text((STAT_X[0], cy), row["wl"], font=stat_font, fill=NAVY, anchor="mm")
-        draw.text((STAT_X[1], cy), row["div"], font=stat_font, fill=NAVY, anchor="mm")
-        draw.text((STAT_X[2], cy), row["gb"], font=stat_font, fill=NAVY, anchor="mm")
+        img.paste(pennant, (PENNANT_POLE_X, cy - pennant.height // 2))
+        for x, width, key in zip(STAT_X, STAT_WIDTHS, ("wl", "div", "gb")):
+            value = row[key]
+            draw.text((x, cy), value,
+                      font=fitted_font(value, FONT_HEAVY, 28, width, minimum=16),
+                      fill=BLACK, anchor="mm")
+        draw.line((26, cy + 54, 454, cy + 54), fill=BLACK, width=1)
 
-    # Variable-width weekly schedule columns: normally 3 or 4 unique games.
+    # A 2x2 grid guarantees the same readable type size for up to four games.
+    # Scores stay in the same left-to-right order as the matchup names.
+    draw.rectangle((25, 621, 454, 763), outline=BLACK, width=2)
+    draw.text((240, 637), "THIS WEEK", font=load_font(FONT_SERIF, 20), fill=BLACK, anchor="mm")
+    draw.line((38, 637, 143, 637), fill=RED, width=2)
+    draw.line((337, 637, 441, 637), fill=RED, width=2)
     if games:
-        games = games[:4]
-        left, right = 74, 897
-        width = (right - left) / len(games)
-        for i, game in enumerate(games):
-            cx = left + width * (i + 0.5)
-            if i:
-                sx = int(left + width * i)
-                draw.line((sx, 1413, sx, 1510), fill=GREY, width=2)
-            name_size = 31 if len(games) <= 3 else 24
-            time_size = 27 if len(games) <= 3 else 21
-            draw.text((cx, 1442), matchup_label(game), font=load_font(FONT_HEAVY, name_size), fill=NAVY, anchor="mm")
-            draw.text((cx, 1492), status_label(game), font=load_font(FONT_BOLD, time_size), fill=NAVY, anchor="mm")
+        visible_games = games[:4]
+        two_rows = len(visible_games) > 2
+        draw.line((240, 655, 240, 754), fill=BLACK, width=1)
+        if two_rows:
+            draw.line((36, 705, 443, 705), fill=BLACK, width=1)
+        for i, game in enumerate(visible_games):
+            cx = 132 if i % 2 == 0 else 348
+            cy = (670 + (i // 2) * 51) if two_rows else 688
+            name, status = matchup_label(game), status_label(game)
+            draw.text((cx, cy), name,
+                      font=fitted_font(name, FONT_HEAVY, 18, 192, minimum=16), fill=BLACK, anchor="mm")
+            draw.text((cx, cy + 21), status,
+                      font=fitted_font(status, FONT_BOLD, 16, 192, minimum=15), fill=BLACK, anchor="mm")
     else:
-        draw.text((486, 1464), "SCHEDULE UNAVAILABLE", font=load_font(FONT_BOLD, 28), fill=NAVY, anchor="mm")
+        draw.text((240, 704), "NO GAMES THIS WEEK" if week is not None else "SCHEDULE UNAVAILABLE",
+                  font=load_font(FONT_BOLD, 17), fill=BLACK, anchor="mm")
 
-    draw.rectangle((68, 1547, 160, 1584), fill=(255, 255, 255, 255))
-    draw.text((83, 1565), f"WEEK {week or '—'}", font=load_font(FONT_BOLD, 17), fill=NAVY, anchor="lm")
-
-    img = img.resize(DEVICE_OUTPUT_SIZE, Image.Resampling.LANCZOS)
-    return img.convert("RGB")
+    draw.text((28, 777), f"WEEK {week or '—'}", font=load_font(FONT_BOLD, 12), fill=BLACK, anchor="lm")
+    draw.text((452, 777), "TIMES PT", font=load_font(FONT_BOLD, 12), fill=BLACK, anchor="rm")
+    return img
 
 
 def main():
     now = datetime.now(DISPLAY_TZ)
 
     if os.getenv("NFL_SAMPLE") == "1":
+        now = datetime(2026, 9, 10, 12, 0, tzinfo=DISPLAY_TZ)
         games, week = sample_season()
     else:
         try:
@@ -401,6 +485,10 @@ def main():
     OUT.parent.mkdir(parents=True, exist_ok=True)
     output.save(OUT, format="PNG", optimize=True)
     print(f"Wrote {OUT} ({output.size[0]}x{output.size[1]})")
+    # Keep the text-only exploration current using the exact same data snapshot.
+    text_out = OUT.with_name("nfl_nfc_west_text.png")
+    render(standings, week, schedule, now, pennant_style="text").save(text_out, format="PNG", optimize=True)
+    print(f"Wrote {text_out}")
 
 
 if __name__ == "__main__":
