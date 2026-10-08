@@ -66,7 +66,7 @@ ROW_CENTERS = (230, 350, 470, 590)
 STAT_X = (302, 370, 431)  # W-L, DIV, GB
 STAT_WIDTHS = (68, 62, 44)
 DATE_X, DATE_Y = 240, 145
-# The master's This Week box and tagline, without its outer border.
+# The master's This Week box, without its outer border.
 FOOTER_BOX = (22, 653, 458, 785)
 # Where the pole's left edge lands once the transparent margin is trimmed off.
 # Set to the column SEA and LAR already hung from, so the two clubs that were
@@ -396,9 +396,9 @@ def fitted_font(text: str, path: str, size: int, width: int, minimum: int = 14):
 
 
 def render_week_footer(img: Image.Image, week: int | None, games: list[dict]) -> None:
-    """Draw the This Week box and tagline in the same solid inks as the rest.
+    """Draw the This Week box in the same solid inks as the rest.
 
-    The box, its title and the tagline come from the master artwork, flattened
+    The box and its title come from the master artwork, flattened
     like the masthead. Only the box is taken, not the master's own outer
     border, so the single frame drawn by `render` runs unbroken top to bottom.
     """
@@ -408,13 +408,12 @@ def render_week_footer(img: Image.Image, week: int | None, games: list[dict]) ->
 
     draw = ImageDraw.Draw(img)
     draw.fontmode = "1"
-    # Blank the master's placeholder week label, its tagline (too fine to
-    # survive flattening) and the scraps of its corner ornaments, then redraw.
+    # Blank the master's placeholder week label, its tagline and the scraps of
+    # its corner ornaments, then redraw the week.
     for box in ((22, 762, 120, 785), (330, 762, 458, 785)):
         draw.rectangle(box, fill=WHITE)
-    tag_font = load_font(FONT_BOLD, 9)
-    draw.text((41, 775), f"WEEK {week or '—'}", font=tag_font, fill=BLACK, anchor="lm")
-    draw.text((439, 775), "FOOTBALL LIVES HERE", font=tag_font, fill=BLACK, anchor="rm")
+    week_font = load_font(FONT_BOLD, 9)
+    draw.text((41, 775), f"WEEK {week or '—'}", font=week_font, fill=BLACK, anchor="lm")
 
     if not games:
         draw.text((240, 724), "SCHEDULE UNAVAILABLE", font=load_font(FONT_BOLD, 14), fill=BLACK, anchor="mm")
