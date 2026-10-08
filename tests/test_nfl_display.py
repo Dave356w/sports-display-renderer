@@ -20,7 +20,7 @@ class DisplayTests(unittest.TestCase):
                     img = nfl.render(self.rows, self.week, games[:count], self.now, style)
                     self.assertEqual(img.size, (480, 800))
                     self.assertEqual(img.mode, "RGB")
-                    self.assertLessEqual(set(img.crop((0, 0, 480, 645)).getdata()), set(nfl.PANEL_COLORS))
+                    self.assertLessEqual(set(img.getdata()), set(nfl.PANEL_COLORS))
                     # The 12px physical-frame margin must remain blank.
                     self.assertEqual(set(img.crop((0, 0, 480, 12)).getdata()), {nfl.WHITE})
 
