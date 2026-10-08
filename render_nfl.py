@@ -318,13 +318,13 @@ def load_pennant(abbr: str, style: str = "illustrated") -> Image.Image:
     uniform footprint.
     """
     if style == "text":
-        # Regions in the generated exploration sheet. Kept as a separate asset
-        # so the original illustrated pennants remain available unchanged.
+        # Use only the triangular fields, excluding the left hoist bands and
+        # their white separators. Keep the lettering from the source unchanged.
         boxes = {
-            "SF": (23, 30, 1067, 419),
-            "SEA": (23, 436, 1067, 780),
-            "LAR": (23, 794, 1067, 1111),
-            "ARI": (23, 1122, 1067, 1420),
+            "SF": (142, 58, 1067, 400),
+            "SEA": (142, 454, 1067, 762),
+            "LAR": (142, 813, 1067, 1092),
+            "ARI": (142, 1139, 1067, 1400),
         }
         with Image.open(ASSETS / "text-only-pennants.png") as sheet:
             pennant = sheet.crop(boxes[abbr]).convert("RGBA")
