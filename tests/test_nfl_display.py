@@ -49,6 +49,48 @@ class DisplayTests(unittest.TestCase):
                                 nfl.STAT_X[0] - nfl.STAT_WIDTHS[0] // 2)
                 self.assertLessEqual(pennant.height, 91)
 
+    def test_rams_text_pennant_lettering_is_upright_and_contained(self):
+        pennant = nfl.load_pennant("LAR", "text")
+        # Outer flag geometry is unchanged by the lettering redraw.
+        self.assertEqual(pennant.size, (236, 81))
+        panel = nfl.panel_artwork(pennant)
+        self.assertLessEqual(set(panel.getdata()), set(nfl.PANEL_COLORS))
+        # The piping is the largest yellow run; R, A, M and S must each be a
+        # separate solid shape, none touching the border or broken apart.
+        outline, *letters = _components(panel, nfl.YELLOW)
+        self.assertEqual(len(letters), 4)
+        self.assertGreater(len(outline), max(map(len, letters)))
+        # Upright, not oblique: the R's stem keeps one left edge through the
+        # middle of the letter (the italic art drifted ~8px over this span).
+        r = min(letters, key=lambda shape: min(x for x, _ in shape))
+        ys = [y for _, y in r]
+        top, bottom = min(ys), max(ys)
+        lefts = {min(x for x, y in r if y == row)
+                 for row in range(top + (bottom - top) // 5, bottom - (bottom - top) // 5)}
+        self.assertLessEqual(max(lefts) - min(lefts), 1)
+
+
+def _components(img, color):
+    """4-connected regions of one ink, largest first."""
+    width, height = img.size
+    px = img.load()
+    seen, regions = set(), []
+    for y in range(height):
+        for x in range(width):
+            if px[x, y] != color or (x, y) in seen:
+                continue
+            seen.add((x, y))
+            stack, region = [(x, y)], []
+            while stack:
+                cx, cy = stack.pop()
+                region.append((cx, cy))
+                for nx, ny in ((cx + 1, cy), (cx - 1, cy), (cx, cy + 1), (cx, cy - 1)):
+                    if (0 <= nx < width and 0 <= ny < height and (nx, ny) not in seen
+                            and px[nx, ny] == color):
+                        seen.add((nx, ny))
+                        stack.append((nx, ny))
+            regions.append(region)
+    return sorted(regions, key=len, reverse=True)
 
 
 if __name__ == "__main__":
