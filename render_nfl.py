@@ -60,10 +60,6 @@ FONT_HEAVY = "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"
 FONT_BOLD = FONT_HEAVY
 FONT_SERIF = "/usr/share/fonts/truetype/dejavu/DejaVuSerif-Bold.ttf"
 FONT_FALLBACK = "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"
-FONT_MASTHEAD = "/usr/share/fonts/truetype/noto/NotoSerif-ExtraCondensedBlack.ttf"
-FONT_PENNANT_SERIF = "/usr/share/fonts/truetype/dejavu/DejaVuSerifCondensed-Bold.ttf"
-FONT_PENNANT_SANS = "/usr/share/fonts/truetype/dejavu/DejaVuSansCondensed-Bold.ttf"
-FONT_PENNANT_ITALIC = "/usr/share/fonts/truetype/dejavu/DejaVuSansCondensed-BoldOblique.ttf"
 
 # All layout measurements below are final device pixels.
 ROW_CENTERS = (230, 350, 470, 590)
@@ -311,84 +307,6 @@ def status_label(game: dict) -> str:
     return time_label(game["dt"])
 
 
-
-def draw_stretched_ink(img: Image.Image, center_x: int, y: int, text: str,
-                       width: int, height: int) -> None:
-    """Typeset the collectible headings from solid outlines, not noisy raster art.
-
-    The tall condensed serif retains the vintage proportions. A high-resolution
-    mask is resized before the one-bit threshold so edges remain continuous on
-    the six-color, 480-pixel-wide panel.
-    """
-    scale = 4
-    font = load_font(FONT_MASTHEAD, 103 * scale)
-    mask = Image.new("L", (700 * scale, 130 * scale), 0)
-    ImageDraw.Draw(mask).text((0, 0), text, font=font, fill=255)
-    bbox = mask.getbbox()
-    if not bbox:
-        return
-    mask = mask.crop(bbox).resize((width, height), Image.Resampling.LANCZOS)
-    mask = mask.point(lambda intensity: 255 if intensity >= 128 else 0)
-    img.paste(BLACK, (round(center_x - width / 2), y), mask)
-
-
-def draw_clean_masthead(img: Image.Image) -> None:
-    """Keep the NFC West headline and red vintage accents clean and aligned."""
-    import math
-
-    draw_stretched_ink(img, 240, 23, "NFC WEST", 322, 78)
-    draw = ImageDraw.Draw(img)
-    draw.line(((82, 123), (180, 105)), fill=RED, width=2)
-    draw.line(((297, 106), (398, 124)), fill=RED, width=2)
-    for x in (201, 227, 253, 279):
-        points = []
-        for step in range(10):
-            angle = -math.pi / 2 + step * math.pi / 5
-            radius = 7 if step % 2 == 0 else 2.7
-            points.append((round(x + radius * math.cos(angle)),
-                           round(108 + radius * math.sin(angle))))
-        draw.polygon(points, fill=RED)
-
-
-def clean_text_pennant(abbr: str) -> Image.Image:
-    """Render precise pennant piping and solid letterforms directly from type.
-
-    The original shared raster sheet gained jagged outlines, dropped pixels and
-    spurious mixed colors when squeezed to native resolution. Rendering the
-    triangle and lettering on a 4x canvas before snapping to the native six
-    colors avoids those artifacts without changing the team's flag colors.
-    """
-    definitions = {
-        "SF": ("49ERS", 89, RED, YELLOW, FONT_PENNANT_SERIF, 36, 135),
-        "SEA": ("SEAHAWKS", 84, BLUE, GREEN, FONT_PENNANT_SANS, 28, 151),
-        "LAR": ("RAMS", 73, BLUE, YELLOW, FONT_PENNANT_ITALIC, 36, 140),
-        "ARI": ("CARDINALS", 75, RED, BLACK, FONT_PENNANT_SERIF, 26, 155),
-    }
-    label, height, ground, piping, face, size, max_label_width = definitions[abbr]
-    scale, width = 4, 236
-    cy = height * scale / 2
-    hi = Image.new("RGB", (width * scale, height * scale), WHITE)
-    draw = ImageDraw.Draw(hi)
-    draw.polygon(((0, 0), (235 * scale, cy), (0, (height - 1) * scale)), fill=piping)
-    draw.polygon(((3 * scale, 3 * scale), (226 * scale, cy),
-                  (3 * scale, (height - 4) * scale)), fill=ground)
-    font = load_font(face, size * scale)
-    while draw.textbbox((0, 0), label, font=font)[2] > max_label_width * scale:
-        size -= 0.5
-        font = load_font(face, round(size * scale))
-    draw.text((8 * scale, cy - scale), label, font=font, anchor="lm",
-              fill=YELLOW if abbr == "LAR" else WHITE)
-    image = hi.resize((width, height), Image.Resampling.BOX)
-    # Assign each edge pixel a physical panel primary; there is no dithering.
-    mapping = {
-        pixel: min(PANEL_COLORS, key=lambda ink:
-                   sum((channel - candidate) ** 2 for channel, candidate in zip(pixel, ink)))
-        for pixel in set(image.getdata())
-    }
-    image.putdata([mapping[pixel] for pixel in image.getdata()])
-    return image
-
-
 def load_pennant(abbr: str, style: str = "illustrated") -> Image.Image:
     """The club's pennant, scaled to the row and trimmed to its own artwork.
 
@@ -403,7 +321,18 @@ def load_pennant(abbr: str, style: str = "illustrated") -> Image.Image:
     uniform footprint.
     """
     if style == "text":
-        return clean_text_pennant(abbr)
+        # Refined text-only triangles with team-specific lettering and narrow
+        # perimeter piping. There are no separate left hoist bands or blocks.
+        boxes = {
+            "SF": (27, 49, 1012, 429),
+            "SEA": (27, 439, 1012, 799),
+            "LAR": (27, 809, 1004, 1146),
+            "ARI": (27, 1153, 1004, 1493),
+        }
+        with Image.open(ASSETS / "text-only-pennants.png") as sheet:
+            pennant = sheet.crop(boxes[abbr]).convert("RGBA")
+        pennant.thumbnail(PENNANT_MAX_SIZE, Image.Resampling.LANCZOS)
+        return pennant
     if style != "illustrated":
         raise ValueError(f"Unknown pennant style: {style}")
     pennant_path = ASSETS / f"{abbr}.png"
@@ -499,7 +428,11 @@ def render_week_footer(img: Image.Image, week: int | None, games: list[dict]) ->
     draw.rectangle((325, 675, 432, 677), fill=RED)
     draw.rectangle((206, 775, 274, 776), fill=RED)
 
-    draw_stretched_ink(img, 240, 665, "THIS WEEK", 147, 20)
+    with Image.open(ASSETS / "background.png") as master:
+        # BOX averaging, unlike LANCZOS, adds no ringing, so one luminance
+        # threshold gives the slab title even strokes with no notches.
+        title = master.convert("L").resize(DEVICE_OUTPUT_SIZE, Image.Resampling.BOX).crop(TITLE_BOX)
+    img.paste(BLACK, TITLE_BOX[:2], title.point(lambda v: 255 if v < 150 else 0))
 
     draw_crisp_text(img, (41, 775), f"WEEK {week or '—'}", load_font(FONT_BOLD, 9), anchor="lm")
     if not games:
@@ -524,9 +457,15 @@ def render_week_footer(img: Image.Image, week: int | None, games: list[dict]) ->
 
 def render(standings: list[dict], week: int | None, games: list[dict], now: datetime,
            pennant_style: str = "illustrated") -> Image.Image:
+    background = ASSETS / "background.png"
+    if not background.exists():
+        raise FileNotFoundError(f"Missing NFL background artwork: {background}")
     img = Image.new("RGB", DEVICE_OUTPUT_SIZE, WHITE)
-    # Native-size vector headings replace the distressed downsampled masthead.
-    draw_clean_masthead(img)
+    # Retain the original vintage masthead; draw structural artwork directly at
+    # native size so one-pixel rules and small glyphs are never downsampled.
+    with Image.open(background) as master:
+        title = master.convert("RGB").resize(DEVICE_OUTPUT_SIZE, Image.Resampling.LANCZOS)
+        img.paste(panel_artwork(title.crop((32, 16, 448, 125)), title=True), (32, 16))
     draw = ImageDraw.Draw(img)
     draw.fontmode = "1"  # hard black/white glyph edges, no gray antialias pixels
     date = now.strftime("%B %-d, %Y").upper()
