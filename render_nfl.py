@@ -66,8 +66,8 @@ ROW_CENTERS = (230, 350, 470, 590)
 STAT_X = (302, 370, 431)  # W-L, DIV, GB
 STAT_WIDTHS = (68, 62, 44)
 DATE_X, DATE_Y = 240, 145
-# The master's This Week box, without its outer border.
-FOOTER_BOX = (22, 653, 458, 785)
+# The slab "THIS WEEK" title in the master artwork, in device pixels.
+TITLE_BOX = (164, 664, 316, 684)
 # Where the pole's left edge lands once the transparent margin is trimmed off.
 # Set to the column SEA and LAR already hung from, so the two clubs that were
 # in line stay put and the two that were inset move out to meet them.
@@ -395,28 +395,48 @@ def fitted_font(text: str, path: str, size: int, width: int, minimum: int = 14):
     raise ValueError(f"Label does not fit in {width}px at {minimum}px: {text!r}")
 
 
+def _chamfered(box: tuple[int, int, int, int], cut: int) -> list[tuple[int, int]]:
+    left, top, right, bottom = box
+    return [(left + cut, top), (right - cut, top), (right, top + cut), (right, bottom - cut),
+            (right - cut, bottom), (left + cut, bottom), (left, bottom - cut), (left, top + cut)]
+
+
+def draw_crisp_text(img: Image.Image, xy, text: str, font, fill=BLACK, anchor: str = "mm") -> None:
+    """Small type with even spacing and full weight in a single ink.
+
+    Pillow's 1-bit font mode hints glyphs onto the pixel grid on its own,
+    which thins bold faces and lets letters drift apart ("AR I") at footer
+    sizes. Rendering antialiased and keeping every pixel at least half covered
+    keeps the face's real weight and spacing.
+    """
+    mask = Image.new("L", img.size, 0)
+    ImageDraw.Draw(mask).text(xy, text, font=font, fill=255, anchor=anchor)
+    img.paste(fill, mask.point(lambda v: 255 if v >= 128 else 0))
+
+
 def render_week_footer(img: Image.Image, week: int | None, games: list[dict]) -> None:
     """Draw the This Week box in the same solid inks as the rest.
 
-    The box and its title come from the master artwork, flattened
-    like the masthead. Only the box is taken, not the master's own outer
-    border, so the single frame drawn by `render` runs unbroken top to bottom.
+    The box's double rule is drawn natively: the master's hairlines straddle
+    pixel rows once scaled, so any threshold leaves them dashed. Only the slab
+    title is taken from the master, to match the masthead.
     """
-    with Image.open(ASSETS / "background.png") as master:
-        art = master.convert("RGB").resize(DEVICE_OUTPUT_SIZE, Image.Resampling.LANCZOS)
-    img.paste(panel_artwork(art.crop(FOOTER_BOX), title=True), FOOTER_BOX[:2])
-
     draw = ImageDraw.Draw(img)
-    draw.fontmode = "1"
-    # Blank the master's placeholder week label, its tagline and the scraps of
-    # its corner ornaments, then redraw the week.
-    for box in ((22, 762, 120, 785), (330, 762, 458, 785)):
-        draw.rectangle(box, fill=WHITE)
-    week_font = load_font(FONT_BOLD, 9)
-    draw.text((41, 775), f"WEEK {week or '—'}", font=week_font, fill=BLACK, anchor="lm")
+    draw.polygon(_chamfered((25, 654, 454, 760), 4), outline=BLACK, width=2)
+    draw.polygon(_chamfered((28, 657, 451, 757), 3), outline=BLACK, width=1)
+    draw.rectangle((47, 675, 154, 677), fill=RED)
+    draw.rectangle((325, 675, 432, 677), fill=RED)
+    draw.rectangle((206, 775, 274, 776), fill=RED)
 
+    with Image.open(ASSETS / "background.png") as master:
+        # BOX averaging, unlike LANCZOS, adds no ringing, so one luminance
+        # threshold gives the slab title even strokes with no notches.
+        title = master.convert("L").resize(DEVICE_OUTPUT_SIZE, Image.Resampling.BOX).crop(TITLE_BOX)
+    img.paste(BLACK, TITLE_BOX[:2], title.point(lambda v: 255 if v < 150 else 0))
+
+    draw_crisp_text(img, (41, 775), f"WEEK {week or '—'}", load_font(FONT_BOLD, 9), anchor="lm")
     if not games:
-        draw.text((240, 724), "SCHEDULE UNAVAILABLE", font=load_font(FONT_BOLD, 14), fill=BLACK, anchor="mm")
+        draw_crisp_text(img, (240, 722), "SCHEDULE UNAVAILABLE", load_font(FONT_BOLD, 14))
         return
     games = games[:4]
     left, right = 37, 443
@@ -426,13 +446,13 @@ def render_week_footer(img: Image.Image, week: int | None, games: list[dict]) ->
         cx = left + width * (i + 0.5)
         if i:
             sx = int(left + width * i)
-            for y in range(699, 749, 3):  # dotted column rule
+            for y in range(697, 749, 3):  # dotted column rule
                 draw.point((sx, y), fill=BLACK)
         name, status = matchup_label(game), status_label(game)
-        draw.text((cx, 712), name, font=fitted_font(name, FONT_HEAVY, name_size, int(width) - 8, 9),
-                  fill=BLACK, anchor="mm")
-        draw.text((cx, 737), status, font=fitted_font(status, FONT_BOLD, time_size, int(width) - 8, 8),
-                  fill=BLACK, anchor="mm")
+        draw_crisp_text(img, (cx, 710), name,
+                        fitted_font(name, FONT_HEAVY, name_size, int(width) - 8, 9))
+        draw_crisp_text(img, (cx, 736), status,
+                        fitted_font(status, FONT_BOLD, time_size, int(width) - 8, 8))
 
 
 def render(standings: list[dict], week: int | None, games: list[dict], now: datetime,
