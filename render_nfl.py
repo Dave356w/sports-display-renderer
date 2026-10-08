@@ -418,9 +418,8 @@ def draw_crisp_text(img: Image.Image, xy, text: str, font, fill=BLACK, anchor: s
 def render_week_footer(img: Image.Image, week: int | None, games: list[dict]) -> None:
     """Draw the This Week box in the same solid inks as the rest.
 
-    The box's double rule is drawn natively: the master's hairlines straddle
-    pixel rows once scaled, so any threshold leaves them dashed. Only the slab
-    title is taken from the master, to match the masthead.
+    The box's double rule and slab-serif title are drawn natively so the
+    source artwork's miniature raster lettering cannot break into jagged bits.
     """
     draw = ImageDraw.Draw(img)
     draw.polygon(_chamfered((25, 654, 454, 760), 4), outline=BLACK, width=2)
@@ -429,11 +428,28 @@ def render_week_footer(img: Image.Image, week: int | None, games: list[dict]) ->
     draw.rectangle((325, 675, 432, 677), fill=RED)
     draw.rectangle((206, 775, 274, 776), fill=RED)
 
-    with Image.open(ASSETS / "background.png") as master:
-        # BOX averaging, unlike LANCZOS, adds no ringing, so one luminance
-        # threshold gives the slab title even strokes with no notches.
-        title = master.convert("L").resize(DEVICE_OUTPUT_SIZE, Image.Resampling.BOX).crop(TITLE_BOX)
-    img.paste(BLACK, TITLE_BOX[:2], title.point(lambda v: 255 if v < 150 else 0))
+    # The title in the large background suffers from broken serifs when its
+    # grayscale pixels are thresholded at 480x800. Typeset ONLY the footer's
+    # nine-letter slab-serif title at 4x resolution, then snap it to black ink.
+    # Keep its original physical bounding box, red rules and vintage character.
+    footer_title = "THIS WEEK"
+    scale = 4
+    font = load_font("/usr/share/fonts/truetype/dejavu/DejaVuSerifCondensed-Bold.ttf",
+                     24 * scale)
+    title_mask = Image.new("L", (720, 140), 0)
+    title_draw = ImageDraw.Draw(title_mask)
+    x = 8
+    for letter in footer_title:
+        title_draw.text((x, 0), letter, font=font, fill=255, stroke_width=1)
+        x += round(font.getlength(letter)) + scale  # vintage letterspacing
+    bbox = title_mask.getbbox()
+    if bbox is None:
+        raise ValueError("Footer title font rendered no glyphs")
+    # Fit to the original 152x20 title slot, without touching red rules.
+    title_mask = title_mask.crop(bbox).resize((149, 19), Image.Resampling.LANCZOS)
+    title_mask = title_mask.point(lambda value: 255 if value >= 128 else 0)
+    draw.rectangle(TITLE_BOX, fill=WHITE)
+    img.paste(BLACK, (166, 665), title_mask)
 
     draw_crisp_text(img, (41, 775), f"WEEK {week or '—'}", load_font(FONT_BOLD, 9), anchor="lm")
     if not games:
