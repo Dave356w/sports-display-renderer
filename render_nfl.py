@@ -319,13 +319,13 @@ def load_pennant(abbr: str, style: str = "illustrated") -> Image.Image:
     uniform footprint.
     """
     if style == "text":
-        # Use only the triangular fields, excluding the left hoist bands and
-        # their white separators. Keep the lettering from the source unchanged.
+        # Refined text-only triangles with team-specific lettering and narrow
+        # perimeter piping. There are no separate left hoist bands or blocks.
         boxes = {
-            "SF": (142, 58, 1067, 400),
-            "SEA": (142, 454, 1067, 762),
-            "LAR": (142, 813, 1067, 1092),
-            "ARI": (142, 1139, 1067, 1400),
+            "SF": (27, 49, 1012, 429),
+            "SEA": (27, 439, 1012, 799),
+            "LAR": (27, 809, 1004, 1146),
+            "ARI": (27, 1153, 1004, 1493),
         }
         with Image.open(ASSETS / "text-only-pennants.png") as sheet:
             pennant = sheet.crop(boxes[abbr]).convert("RGBA")
